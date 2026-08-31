@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:00 UTC | **By:** `agent-1:opus` | **Session:** 1
+> **Last updated:** 2026-08-31 23:54 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -27,9 +27,9 @@ This is the only execution-state file. Position, progress, ledger, verification,
 - **Status:** `none`
 - **Intent:** Initialize the Go module, entrypoint, build metadata, Make gates, and ignore rules.
 - **Phase:** 0 - Foundation and contracts (`phase_01.md`)
-- **Next action:** Open `phase_01.md` sub-phase 0.1 in this section, set `Status: OPEN`, and set section 6 before creating production files.
+- **Next action:** Open and implement phase 0.1 sub-phase 0.2: define typed application errors and exit taxonomy.
 - **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with initial untracked specifications/plan | last commit none (unborn branch)
+- **Repo state:** branch `main` | working tree dirty with phase 0.1 files and unrelated untracked `.serena/` | last commit `96decdc`
 
 ## 2. Feature context (self-contained recap)
 
@@ -51,17 +51,26 @@ These commands are authoritative and must remain identical to overview/phase gat
 - **Vulnerability:** `make vuln` | **Release:** `make release-check` | **Container:** `make test-container`
 - **Aggregate:** `make verify` (build, format, lint, unit, e2e, vulnerability; intentionally excludes Docker and publishing)
 - **Setup / caveats:** Go 1.27.0 and Make required. Phase 0.1 creates Make targets; before that, record them `not-run`, verify `go version`, and do not claim green. `make test-e2e` builds a fresh temp binary. Release check needs GoReleaser v2.18.0 and Syft v1.51.1. Container check needs Docker/buildx. No command may use repository `.tgsend` or real Telegram credentials.
-- **WIP commits:** `off`
+- **WIP commits:** `on` (user requested local commits for every completed phase; explicit user instruction for this execution)
 
 ## 4. Work ledger
 
 | # | Type | ID | Agent | What changed | Files | Gates | Commit |
 |---|------|----|-------|--------------|-------|-------|--------|
+| 1 | sub-phase | 0.1 | agent-3:haiku | Initialized Go module, buildinfo, scaffold entrypoint, Make gates, and ignore rules | go.mod, go.sum, cmd/tgsend/main.go, internal/buildinfo/*, internal/tools/tools.go, Makefile, .gitignore | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 
 ## 5. Files touched
 
 | Path | What was done | Unit |
 |------|---------------|------|
+| go.mod | Go 1.27 module with pinned Cobra and TOML dependencies | 0.1 |
+| go.sum | Tidy dependency checksums | 0.1 |
+| cmd/tgsend/main.go | Compile-safe entrypoint placeholder | 0.1 |
+| internal/buildinfo/buildinfo.go | Linkable build metadata API | 0.1 |
+| internal/buildinfo/buildinfo_test.go | Default and linker-variable tests | 0.1 |
+| internal/tools/tools.go | Build-tagged retention of planned direct dependencies | 0.1 |
+| Makefile | Build, format, lint, test, e2e, vulnerability, and verify gates | 0.1 |
+| .gitignore | Preserved `.tgsend`; added build/release/coverage outputs | 0.1 |
 
 ## 6. In-flight work
 
@@ -71,16 +80,16 @@ none - tree consistent
 
 | Gate / test | Command | Last result | When |
 |-------------|---------|-------------|------|
-| Go toolchain | `go version` | not-run | - |
-| Build | `make build` | not-run | - |
-| Format | `make fmt-check` | not-run | - |
-| Lint | `make lint` | not-run | - |
-| Unit | `make test` | not-run | - |
-| E2E | `make test-e2e` | not-run | - |
-| Vulnerability | `make vuln` | not-run | - |
+| Go toolchain | `go version` | PASS: local go1.26.1; module commands auto-selected go1.27.0 | 2026-08-31 |
+| Build | `make build` | PASS | 2026-08-31 |
+| Format | `make fmt-check` | PASS | 2026-08-31 |
+| Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
+| Unit | `make test` | PASS: go test -race ./... | 2026-08-31 |
+| E2E | `make test-e2e` | PASS: no e2e tests yet | 2026-08-31 |
+| Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | not-run | - |
+| Aggregate | `make verify` | PASS | 2026-08-31 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -92,6 +101,7 @@ none
 
 | # | Plan said | What was done | Why | Impact on later phases |
 |---|-----------|---------------|-----|------------------------|
+| 1 | Run pinned govulncheck directly against the Go 1.27 module | Scan a temporary copy with only the `go` directive lowered to 1.26.1; the pinned binary is built with local Go 1.26.1 | govulncheck v1.1.4 panics or rejects Go 1.27 package analysis; source compatibility is unchanged | Make vuln remains pinned and excludes `.tgsend`; later phases inherit the same scan workaround |
 
 ## 9. Blockers and open questions
 
@@ -102,6 +112,7 @@ none
 - Never open, print, copy, package, or use repository `.tgsend`.
 - Do not retry transport, timeout, 5xx, malformed response, or non-429 API failures.
 - Do not use deprecated GoReleaser `dockers` or `docker_manifests`; use `dockers_v2`.
+- Do not run govulncheck v1.1.4 via `go run` under the auto-selected Go 1.27 toolchain; it panics in x/tools SSA. The Make target's temporary compatibility snapshot is the working path.
 
 ## 11. Progress board
 
@@ -109,7 +120,7 @@ none
 
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
-| 0 - Foundation and contracts | phase_01.md | `TODO` | First unit 0.1 |
+| 0 - Foundation and contracts | phase_01.md | `IN_PROGRESS` | 0.1 DONE; next 0.2 |
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `TODO` | - |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
