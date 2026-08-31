@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-08-31 23:54 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-08-31 23:58 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `0.1`
+- **ID:** `0.3`
 - **Status:** `none`
-- **Intent:** Initialize the Go module, entrypoint, build metadata, Make gates, and ignore rules.
+- **Intent:** Define typed application errors and the stable exit taxonomy.
 - **Phase:** 0 - Foundation and contracts (`phase_01.md`)
-- **Next action:** Open and implement phase 0.1 sub-phase 0.2: define typed application errors and exit taxonomy.
+- **Next action:** Open and implement phase 0.1 sub-phase 0.3: Cobra root, deterministic JSON presenter, version/help behavior, and stream discipline.
 - **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with phase 0.1 files and unrelated untracked `.serena/` | last commit `96decdc`
+- **Repo state:** branch `main` | working tree dirty with unrelated untracked `.serena/` only | last commit `eed7e02`
 
 ## 2. Feature context (self-contained recap)
 
@@ -58,6 +58,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | # | Type | ID | Agent | What changed | Files | Gates | Commit |
 |---|------|----|-------|--------------|-------|-------|--------|
 | 1 | sub-phase | 0.1 | agent-3:haiku | Initialized Go module, buildinfo, scaffold entrypoint, Make gates, and ignore rules | go.mod, go.sum, cmd/tgsend/main.go, internal/buildinfo/*, internal/tools/tools.go, Makefile, .gitignore | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
+| 2 | sub-phase | 0.2 | agent-3:haiku | Added typed application errors, stable codes, exit taxonomy, safe causes, and progress validation | internal/apperr/error.go, internal/apperr/error_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 
 ## 5. Files touched
 
@@ -71,6 +72,8 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/tools/tools.go | Build-tagged retention of planned direct dependencies | 0.1 |
 | Makefile | Build, format, lint, test, e2e, vulnerability, and verify gates | 0.1 |
 | .gitignore | Preserved `.tgsend`; added build/release/coverage outputs | 0.1 |
+| internal/apperr/error.go | Typed safe application errors, codes, kinds, exit codes, and progress | 0.2 |
+| internal/apperr/error_test.go | Taxonomy, unwrap, redaction, and progress tests | 0.2 |
 
 ## 6. In-flight work
 
@@ -84,7 +87,7 @@ none - tree consistent
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... | 2026-08-31 |
+| Unit | `make test` | PASS: go test -race ./... including apperr tests | 2026-08-31 |
 | E2E | `make test-e2e` | PASS: no e2e tests yet | 2026-08-31 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
@@ -120,7 +123,7 @@ none
 
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
-| 0 - Foundation and contracts | phase_01.md | `IN_PROGRESS` | 0.1 DONE; next 0.2 |
+| 0 - Foundation and contracts | phase_01.md | `IN_PROGRESS` | 0.1-0.2 DONE; next 0.3 |
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `TODO` | - |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
