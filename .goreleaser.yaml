@@ -2,6 +2,10 @@ version: 2
 
 project_name: tgsend
 
+before:
+  hooks:
+    - "sh -c 'if command -v sha256sum >/dev/null 2>&1; then sha256sum tgsend.sh > tgsend.sh.sha256; else shasum -a 256 tgsend.sh > tgsend.sh.sha256; fi'"
+
 builds:
   - id: tgsend
     main: ./cmd/tgsend
@@ -92,3 +96,6 @@ dockers_v2:
 
 release:
   replace_existing_artifacts: true
+  extra_files:
+    - glob: ./tgsend.sh
+    - glob: ./tgsend.sh.sha256

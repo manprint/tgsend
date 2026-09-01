@@ -3,3 +3,4 @@
 /dist/
 /coverage.out
 .release-tools/
+tgsend.sh.sha256
