@@ -11,7 +11,7 @@ if ! docker buildx version >/dev/null 2>&1; then
 	exit 1
 fi
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_root=$(CDPATH=; cd -- "$(dirname -- "$0")/../.." && pwd)
 temp_root=$(mktemp -d "${TMPDIR:-/tmp}/tgsend-container.XXXXXX")
 image="tgsend:test-$$"
 cleaned=0
@@ -59,8 +59,8 @@ esac
 
 body_file="$temp_root/body.txt"
 awk 'BEGIN { for (i = 0; i < 2500; i++) printf "🚀" }' >"$body_file"
-preview=$(cat "$body_file" | docker run --rm --platform linux/amd64 -i "$image" \
-	--dry-run --title "Smoke 😀" --type warning --monospace)
+preview=$(docker run --rm --platform linux/amd64 -i "$image" \
+	--dry-run --title "Smoke 😀" --type warning --monospace <"$body_file")
 case "$preview" in
 	*'"dry_run":true'*'"chunks_total":2'*'"chunks_sent":0'*) ;;
 	*)
@@ -68,6 +68,22 @@ case "$preview" in
 		exit 1
 		;;
 esac
+
+wrapper_home="$temp_root/wrapper-home"
+mkdir -p "$wrapper_home"
+native_preview=$(printf '%s' 'wrapper exact 😀' | docker run --rm --platform linux/amd64 -i "$image" --dry-run)
+wrapper_preview=$(printf '%s' 'wrapper exact 😀' | HOME="$wrapper_home" TGSEND_IMAGE="$image" "$repo_root/tgsend.sh" --dry-run)
+if [ "$wrapper_preview" != "$native_preview" ]; then
+	printf '%s\n' 'test-container: wrapper dry-run differs from native image output' >&2
+	exit 1
+fi
+
+printf '%s\n' 'token = "123:container-wrapper"' >"$wrapper_home/.tgsend"
+default_wrapper_preview=$(printf '%s' 'wrapper config' | HOME="$wrapper_home" TGSEND_IMAGE="$image" "$repo_root/tgsend.sh" --dry-run)
+if [ "$default_wrapper_preview" != "$(printf '%s' 'wrapper config' | docker run --rm --platform linux/amd64 -i "$image" --dry-run)" ]; then
+	printf '%s\n' 'test-container: wrapper default-config path changed native dry-run' >&2
+	exit 1
+fi
 
 history=$(docker history --no-trunc --format '{{.CreatedBy}}' "$image")
 case "$history" in
