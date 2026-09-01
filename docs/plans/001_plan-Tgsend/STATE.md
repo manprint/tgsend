@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:34 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:54 UTC | **By:** `agent-3:haiku` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `2.4`
+- **ID:** `3.1`
 - **Status:** `none`
-- **Intent:** Update README with the shipped phase-two formatting and chunking behavior.
-- **Phase:** 2 - Message composition and chunking (`phase_03.md`)
-- **Next action:** Open sub-phase 2.4, then update the user-facing formatting, chunking, limits, and offline-status documentation and execute examples.
-- **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `04ae677`
+- **Intent:** Implement the Telegram HTTP client request and response boundary.
+- **Phase:** 3 - Telegram transport and send orchestration (`phase_04.md`)
+- **Next action:** Read sub-phase 3.1 requirements, open the unit, then implement the exact Telegram `sendMessage` request boundary and its tests.
+- **Assigned:** `agent-2:sonnet`
+- **Repo state:** branch `main` | working tree dirty with state plus unrelated untracked `.serena/` only | last implementation commit `38dbb59`
 
 ## 2. Feature context (self-contained recap)
 
@@ -70,6 +70,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | b85a3c3 |
 | 12 | sub-phase | 2.2 | agent-2:sonnet | Added deterministic UTF-16-bounded body splitting with newline preference, CRLF preservation, progress checks, reconstruction tests, and fuzz coverage | internal/message/split.go, internal/message/split_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | beeec45 |
 | 13 | sub-phase | 2.3 | agent-2:sonnet | Replaced BasicPlanner with the validated title/type/monospace composer, UTF-16 entities, long-body integration, CLI flags, and compiled message acceptance tests | internal/message/planner.go, internal/message/planner_test.go, internal/message/basic.go, internal/message/basic_test.go, internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/cli/root_test.go, internal/apperr/error.go, test/e2e/message_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, planner fuzz all pass; T-MSG-01..09 pass | 04ae677 |
+| 14 | sub-phase | 2.4 | agent-3:haiku | Updated README with phase-two formatting, UTF-16 chunking, limits, dry-run entities, examples, and offline status | README.md | README examples parsed successfully; build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 38dbb59 |
 
 ## 5. Files touched
 
@@ -131,7 +132,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 2.3; `.serena/` remains unrelated and untracked
+claimed - nothing written yet; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -146,7 +147,7 @@ none - tree consistent after sub-phase 2.3; `.serena/` remains unrelated and unt
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; planner fuzz target passed 3s | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -179,7 +180,7 @@ none
 |-------|------|--------|-------|
 | 0 - Foundation and contracts | phase_01.md | `DONE` | 0.1-0.5 closed; build, test, e2e, lint, vulnerability, and README gates pass |
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `DONE` | 1.1-1.5 closed; README examples and all phase gates pass |
-| 2 - Message composition and chunking | phase_03.md | `TODO` | - |
+| 2 - Message composition and chunking | phase_03.md | `DONE` | 2.1-2.4 closed; formatting/chunking and README gates pass |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `TODO` | - |
 | 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | - |
@@ -276,7 +277,7 @@ none
 |-----|-------|--------|-------|
 | README.md | 0 | `DONE` | Build/help/version and no-send limitation |
 | README.md | 1 | `DONE` | Input/config/JSON/basic dry-run |
-| README.md | 2 | `TODO` | Formatting/chunking preview |
+| README.md | 2 | `DONE` | Formatting/chunking preview and offline dry-run behavior |
 | README.md | 3 | `TODO` | Complete native send/retry/failure behavior |
 | README.md | 4 | `TODO` | Docker/wrapper local use |
 | README.md | 5 | `TODO` | Release/install/agentic/final guide |
