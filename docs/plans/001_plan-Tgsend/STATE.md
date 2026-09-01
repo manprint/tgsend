@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:54 UTC | **By:** `agent-3:haiku` | **Session:** 2
+> **Last updated:** 2026-09-01 01:02 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -25,11 +25,11 @@ This is the only execution-state file. Position, progress, ledger, verification,
 - **Type:** `sub-phase`
 - **ID:** `3.1`
 - **Status:** `none`
-- **Intent:** Implement the Telegram HTTP client request and response boundary.
+- **Intent:** Implement the bounded Telegram 429 retry policy.
 - **Phase:** 3 - Telegram transport and send orchestration (`phase_04.md`)
-- **Next action:** Read sub-phase 3.1 requirements, open the unit, then implement the exact Telegram `sendMessage` request boundary and its tests.
+- **Next action:** Read sub-phase 3.2 requirements, open the unit, then implement bounded 429 retries with exact sleep and cancellation behavior.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree clean except unrelated untracked `.serena/` | last implementation commit `38dbb59`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `80062ec`
 
 ## 2. Feature context (self-contained recap)
 
@@ -71,6 +71,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 12 | sub-phase | 2.2 | agent-2:sonnet | Added deterministic UTF-16-bounded body splitting with newline preference, CRLF preservation, progress checks, reconstruction tests, and fuzz coverage | internal/message/split.go, internal/message/split_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | beeec45 |
 | 13 | sub-phase | 2.3 | agent-2:sonnet | Replaced BasicPlanner with the validated title/type/monospace composer, UTF-16 entities, long-body integration, CLI flags, and compiled message acceptance tests | internal/message/planner.go, internal/message/planner_test.go, internal/message/basic.go, internal/message/basic_test.go, internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/cli/root_test.go, internal/apperr/error.go, test/e2e/message_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, planner fuzz all pass; T-MSG-01..09 pass | 04ae677 |
 | 14 | sub-phase | 2.4 | agent-3:haiku | Updated README with phase-two formatting, UTF-16 chunking, limits, dry-run entities, examples, and offline status | README.md | README examples parsed successfully; build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 38dbb59 |
+| 15 | sub-phase | 3.1 | agent-2:sonnet | Added one-attempt Telegram `sendMessage` JSON client with bounded response parsing, secret-safe typed errors, response closing, and base URL validation; stabilized vuln gate on patched Go 1.26.6 scanner runtime | internal/telegram/client.go, internal/telegram/client_test.go, Makefile | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; protocol/request/redaction tests pass | 80062ec |
 
 ## 5. Files touched
 
@@ -129,10 +130,13 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/cli/root_test.go | Added formatting flag forwarding and default assertions | 2.3 |
 | internal/apperr/error.go | Added safe title-too-long usage code | 2.3 |
 | test/e2e/message_test.go | Compiled binary message splitting and formatting acceptance tests | 2.3 |
+| internal/telegram/client.go | One-attempt Telegram Bot API request/response client with safe errors and bounded response reads | 3.1 |
+| internal/telegram/client_test.go | Telegram request, response, redaction, closure, cancellation, and endpoint validation tests | 3.1 |
+| Makefile | Vulnerability gate uses patched Go 1.26.6 temporary snapshot runtime | 3.1 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 2.4; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 3.1; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -144,10 +148,10 @@ none - tree consistent after sub-phase 2.4; `.serena/` remains unrelated and unt
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
 | Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service, CLI, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
 | E2E | `make test-e2e` | PASS: fresh compiled binary harness with input/config, dry-run/JSON, splitting, formatting, entity, and validation acceptance tests | 2026-09-01 |
-| Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
+| Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, vulnerability, and Telegram client protocol gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
