@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:05 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:08 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `0.5`
+- **ID:** `1.1`
 - **Status:** `none`
-- **Intent:** Build and verify the compiled-binary e2e harness and CLI acceptance tests.
-- **Phase:** 0 - Foundation and contracts (`phase_01.md`)
-- **Next action:** Open and implement phase 0.1 sub-phase 0.5: initial README for the shipped CLI skeleton.
-- **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with completed 0.3 files and unrelated untracked `.serena/` | last commit `572ef9c`
+- **Intent:** Implement bounded, exact input acquisition.
+- **Phase:** 1 - Input, config, JSON, and offline CLI (`phase_02.md`)
+- **Next action:** Open and implement phase 1 sub-phase 1.1 as specified in `phase_02.md`.
+- **Assigned:** `agent-2:sonnet`
+- **Repo state:** branch `main` | working tree dirty with unrelated untracked `.serena/` only | last commit `fa791e4`
 
 ## 2. Feature context (self-contained recap)
 
@@ -61,6 +61,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 2 | sub-phase | 0.2 | agent-3:haiku | Added typed application errors, stable codes, exit taxonomy, safe causes, and progress validation | internal/apperr/error.go, internal/apperr/error_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 | 3 | sub-phase | 0.3 | agent-3:haiku | Added Cobra root, deterministic JSON presenter, version/help behavior, and safe error stream discipline | internal/presenter/*, internal/cli/*, cmd/tgsend/main.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 | 4 | sub-phase | 0.4 | agent-2:sonnet | Added fresh compiled-binary e2e harness, strict JSON decoder, and CLI acceptance tests | test/e2e/*, internal/testutil/json.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
+| 5 | sub-phase | 0.5 | agent-3:haiku | Added phase-0 README for build, version, help, and current no-send limitation | README.md | README commands and build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 
 ## 5. Files touched
 
@@ -85,10 +86,11 @@ These commands are authoritative and must remain identical to overview/phase gat
 | test/e2e/main_test.go | Fresh temporary compiled-binary TestMain and repository-root resolution | 0.4 |
 | test/e2e/harness_test.go | Controlled process runner, exit extraction, timeout, and decoder tests | 0.4 |
 | test/e2e/cli_test.go | Compiled version, help, and unknown-flag acceptance tests | 0.4 |
+| README.md | Phase-0 user guide for build, version, help, and no-send limitation | 0.5 |
 
 ## 6. In-flight work
 
-claimed - nothing written yet; unit 0.4 is open; no files written
+none - tree consistent
 
 ## 7. Verification state
 
@@ -134,7 +136,7 @@ none
 
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
-| 0 - Foundation and contracts | phase_01.md | `IN_PROGRESS` | 0.1-0.4 DONE; next 0.5 |
+| 0 - Foundation and contracts | phase_01.md | `DONE` | 0.1-0.5 closed; build, test, e2e, lint, vulnerability, and README gates pass |
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `TODO` | - |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
@@ -231,7 +233,7 @@ none
 
 | Doc | Phase | Status | Notes |
 |-----|-------|--------|-------|
-| README.md | 0 | `TODO` | Build/help/version and no-send limitation |
+| README.md | 0 | `DONE` | Build/help/version and no-send limitation |
 | README.md | 1 | `TODO` | Input/config/JSON/basic dry-run |
 | README.md | 2 | `TODO` | Formatting/chunking preview |
 | README.md | 3 | `TODO` | Complete native send/retry/failure behavior |
