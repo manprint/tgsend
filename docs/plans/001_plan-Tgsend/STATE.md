@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 02:00 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 02:04 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `5.2`
-- **Status:** `OPEN`
-- **Intent:** Add gated GitHub Actions CI and tag-driven release publication.
+- **ID:** `5.3`
+- **Status:** `none`
+- **Intent:** Implement checksum-verifying POSIX installers for binaries and the Docker wrapper.
 - **Phase:** 5 - Release automation, installers, and final docs (`phase_06.md`)
-- **Next action:** Open phase 5 sub-phase 5.2 and implement the pinned CI/release workflows with policy coverage.
+- **Next action:** Open phase 5 sub-phase 5.3 and implement installers with fixture-backed adversarial tests.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `15eb53c`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `b45eabf`
 
 ## 2. Feature context (self-contained recap)
 
@@ -166,6 +166,11 @@ These commands are authoritative and must remain identical to overview/phase gat
 | LICENSE | MIT license with holder manprint | 5.1 |
 | .gitignore | Ignores local release tool downloads | 5.1 |
 | Makefile | Added pinned release tool versions and config/snapshot release targets | 5.1 |
+| .github/workflows/ci.yml | PR/main matrix, pinned quality tools, release snapshot, container, and wrapper gates | 5.2 |
+| .github/workflows/release.yml | Semver-tag release gate, GHCR login, Buildx, Syft, and GoReleaser publish job | 5.2 |
+| .github/dependabot.yml | Weekly Go module and GitHub Actions update policy | 5.2 |
+| go.mod, go.sum | Added YAML parser for workflow policy tests | 5.2 |
+| test/workflow/workflow_test.go | YAML parsing, pinned-action, permission, trigger, secret, and Make parity policy tests | 5.2 |
 
 ## 6. In-flight work
 
@@ -220,7 +225,7 @@ none
 | 2 - Message composition and chunking | phase_03.md | `DONE` | 2.1-2.4 closed; formatting/chunking and README gates pass |
 | 3 - Telegram transport and send orchestration | phase_04.md | `DONE` | 3.1-3.4 closed; Telegram protocol/retry, native serial sends, partial progress, endpoint policy, e2e reference scenario, and README gates pass |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `DONE` | 4.1 acceptance, 4.2 image, 4.3 wrapper, and 4.4 documentation complete |
-| 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | 5.1 release configuration complete; CI, installers, artifact checks, and final README remain |
+| 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | 5.1 release configuration and 5.2 gated workflows complete; installers, artifact checks, and final README remain |
 
 ### Tests
 
@@ -290,11 +295,11 @@ none
 | T-REL-07 | release | `TODO` | Installer/generated-name agreement |
 | T-REL-08 | release | `TODO` | Published manifest platforms/OCI |
 | T-REL-09 | release | `TODO` | No config/secret in release artifacts |
-| T-CI-01 | workflow | `TODO` | Workflow policy |
-| T-CI-02 | workflow | `TODO` | CI/local command parity |
-| T-CI-03 | workflow | `TODO` | Release/GHCR wiring |
-| T-CI-04 | workflow | `TODO` | No live Telegram CI |
-| T-CI-05 | manual | `TODO` | Fork/test-tag syntax acceptance |
+| T-CI-01 | workflow | `DONE` | YAML/action/permission workflow policy test |
+| T-CI-02 | workflow | `DONE` | CI commands match runnable Make targets and passed locally |
+| T-CI-03 | workflow | `DONE` | Release job gated by quality and wired to GHCR/GoReleaser |
+| T-CI-04 | workflow | `DONE` | Workflow policy rejects live Telegram endpoints and secret names |
+| T-CI-05 | manual | `DONE` | Semver tag filter and workflow syntax validated locally without publication |
 | T-INS-01 | installer | `TODO` | Latest binary install |
 | T-INS-02 | installer | `TODO` | Pinned version URLs |
 | T-INS-03 | installer | `TODO` | Checksum fail-closed behavior |
