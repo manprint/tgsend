@@ -195,7 +195,7 @@ none
 | 0 - Foundation and contracts | phase_01.md | `DONE` | 0.1-0.5 closed; build, test, e2e, lint, vulnerability, and README gates pass |
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `DONE` | 1.1-1.5 closed; README examples and all phase gates pass |
 | 2 - Message composition and chunking | phase_03.md | `DONE` | 2.1-2.4 closed; formatting/chunking and README gates pass |
-| 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
+| 3 - Telegram transport and send orchestration | phase_04.md | `DONE` | 3.1-3.4 closed; Telegram protocol/retry, native serial sends, partial progress, endpoint policy, e2e reference scenario, and README gates pass |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `TODO` | - |
 | 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | - |
 
