@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:02 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:05 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,11 +23,11 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `0.4`
+- **ID:** `0.5`
 - **Status:** `none`
-- **Intent:** Define typed application errors and the stable exit taxonomy.
+- **Intent:** Build and verify the compiled-binary e2e harness and CLI acceptance tests.
 - **Phase:** 0 - Foundation and contracts (`phase_01.md`)
-- **Next action:** Open and implement phase 0.1 sub-phase 0.4: compiled-binary e2e harness, JSON decoder helpers, and CLI acceptance tests.
+- **Next action:** Open and implement phase 0.1 sub-phase 0.5: initial README for the shipped CLI skeleton.
 - **Assigned:** `agent-3:haiku`
 - **Repo state:** branch `main` | working tree dirty with completed 0.3 files and unrelated untracked `.serena/` | last commit `572ef9c`
 
@@ -60,6 +60,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 1 | sub-phase | 0.1 | agent-3:haiku | Initialized Go module, buildinfo, scaffold entrypoint, Make gates, and ignore rules | go.mod, go.sum, cmd/tgsend/main.go, internal/buildinfo/*, internal/tools/tools.go, Makefile, .gitignore | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 | 2 | sub-phase | 0.2 | agent-3:haiku | Added typed application errors, stable codes, exit taxonomy, safe causes, and progress validation | internal/apperr/error.go, internal/apperr/error_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 | 3 | sub-phase | 0.3 | agent-3:haiku | Added Cobra root, deterministic JSON presenter, version/help behavior, and safe error stream discipline | internal/presenter/*, internal/cli/*, cmd/tgsend/main.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
+| 4 | sub-phase | 0.4 | agent-2:sonnet | Added fresh compiled-binary e2e harness, strict JSON decoder, and CLI acceptance tests | test/e2e/*, internal/testutil/json.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | uncommitted |
 
 ## 5. Files touched
 
@@ -80,10 +81,14 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/cli/root.go | Cobra root, flag handling, stream setup, and exit mapping | 0.3 |
 | internal/cli/root_test.go | Version, help, unknown flag, positional, and safety tests | 0.3 |
 | cmd/tgsend/main.go | Real stream dependency construction and process entrypoint | 0.3 |
+| internal/testutil/json.go | Exactly-one-document JSON test decoder with newline requirement | 0.4 |
+| test/e2e/main_test.go | Fresh temporary compiled-binary TestMain and repository-root resolution | 0.4 |
+| test/e2e/harness_test.go | Controlled process runner, exit extraction, timeout, and decoder tests | 0.4 |
+| test/e2e/cli_test.go | Compiled version, help, and unknown-flag acceptance tests | 0.4 |
 
 ## 6. In-flight work
 
-claimed - nothing written yet; unit 0.3 is open; no files written
+claimed - nothing written yet; unit 0.4 is open; no files written
 
 ## 7. Verification state
 
@@ -94,7 +99,7 @@ claimed - nothing written yet; unit 0.3 is open; no files written
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
 | Unit | `make test` | PASS: go test -race ./... including CLI/presenter tests | 2026-09-01 |
-| E2E | `make test-e2e` | PASS: no e2e tests yet | 2026-08-31 |
+| E2E | `make test-e2e` | PASS: fresh compiled binary harness and CLI acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
@@ -129,7 +134,7 @@ none
 
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
-| 0 - Foundation and contracts | phase_01.md | `IN_PROGRESS` | 0.1-0.3 DONE; next 0.4 |
+| 0 - Foundation and contracts | phase_01.md | `IN_PROGRESS` | 0.1-0.4 DONE; next 0.5 |
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `TODO` | - |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
@@ -140,9 +145,9 @@ none
 
 | ID | Type | Status | Notes |
 |----|------|--------|-------|
-| T-CLI-01 | e2e | `TODO` | Version JSON from compiled binary |
-| T-CLI-02 | e2e | `TODO` | Textual help from compiled binary |
-| T-CLI-03 | e2e | `TODO` | Unknown flag produces one stderr JSON |
+| T-CLI-01 | e2e | `DONE` | Version JSON from compiled binary |
+| T-CLI-02 | e2e | `DONE` | Textual help from compiled binary |
+| T-CLI-03 | e2e | `DONE` | Unknown flag produces one stderr JSON |
 | T-IN-01 | e2e | `TODO` | Exact whitespace/newline stdin |
 | T-IN-02 | e2e | `TODO` | Message/stdin conflict |
 | T-IN-03 | e2e | `TODO` | Empty pipe error |
