@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:35 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:56 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `2.1`
+- **ID:** `2.2`
 - **Status:** `none`
-- **Intent:** Implement deterministic Unicode-aware message splitting.
-- **Phase:** 1 - Input, config, JSON, and offline CLI (`phase_02.md`)
-- **Next action:** Open sub-phase 2.1, then implement the message planner, UTF-16 bounds, newline-preferred splitting, and unit/fuzz tests.
-- **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with README and state update plus unrelated untracked `.serena/` only | last commit `pending-1.5`
+- **Intent:** Implement deterministic newline-preferred body splitting.
+- **Phase:** 2 - Message composition and chunking (`phase_03.md`)
+- **Next action:** Open sub-phase 2.2, then implement bounded newline-preferred splitting and reconstruction/invariant tests.
+- **Assigned:** `agent-2:sonnet`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last commit `eefb45e`
 
 ## 2. Feature context (self-contained recap)
 
@@ -66,7 +66,8 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 7 | sub-phase | 1.2 | agent-2:sonnet | Added strict TOML/environment configuration loading with path precedence, ChatID normalization, validation, and secret-safe typed errors | internal/config/config.go, internal/config/config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | f42d329 |
 | 8 | sub-phase | 1.3 | agent-3:haiku | Added stable send/dry-run JSON schemas, non-null arrays, preview entities, optional progress, and golden fixtures | internal/presenter/presenter.go, internal/presenter/presenter_test.go, internal/presenter/testdata/* | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 473b273 |
 | 9 | sub-phase | 1.4 | agent-2:sonnet | Added shared message types, UTF-16 basic planner, offline service, CLI flags, compiled input/dry-run acceptance tests, and credential-free behavior | internal/message/*, internal/app/*, internal/cli/*, internal/presenter/presenter.go, cmd/tgsend/main.go, test/e2e/input_config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 5d35466 |
-| 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.5 |
+| 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | aec27ac |
+| 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | eefb45e |
 
 ## 5. Files touched
 
@@ -111,10 +112,12 @@ These commands are authoritative and must remain identical to overview/phase gat
 | cmd/tgsend/main.go | Constructed production offline application service | 1.4 |
 | test/e2e/input_config_test.go | Compiled input, dry-run, JSON, conflict, empty, and limit acceptance tests | 1.4 |
 | README.md | Phase-one user guide for usage, configuration, JSON, dry-run, limits, exit codes, and troubleshooting | 1.5 |
+| internal/message/utf16.go | Checked UTF-16 code-unit length, prefix, offset, and addition primitives | 2.1 |
+| internal/message/utf16_test.go | UTF-16 table, boundary, invalid-input, overflow, and fuzz tests | 2.1 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 1.5; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 2.1; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -124,12 +127,12 @@ none - tree consistent after sub-phase 1.5; `.serena/` remains unrelated and unt
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, planner, service, and CLI tests | 2026-09-01 |
+| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, planner, service, CLI, and UTF-16 primitive tests | 2026-09-01 |
 | E2E | `make test-e2e` | PASS: fresh compiled binary harness and input/dry-run/JSON acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; UTF-16 fuzz target also passed 3s | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
