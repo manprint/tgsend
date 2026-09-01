@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:30 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 01:34 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -29,7 +29,7 @@ This is the only execution-state file. Position, progress, ledger, verification,
 - **Phase:** 2 - Message composition and chunking (`phase_03.md`)
 - **Next action:** Open sub-phase 2.4, then update the user-facing formatting, chunking, limits, and offline-status documentation and execute examples.
 - **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `pending-2.3`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `04ae677`
 
 ## 2. Feature context (self-contained recap)
 
@@ -69,7 +69,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | aec27ac |
 | 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | b85a3c3 |
 | 12 | sub-phase | 2.2 | agent-2:sonnet | Added deterministic UTF-16-bounded body splitting with newline preference, CRLF preservation, progress checks, reconstruction tests, and fuzz coverage | internal/message/split.go, internal/message/split_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | beeec45 |
-| 13 | sub-phase | 2.3 | agent-2:sonnet | Replaced BasicPlanner with the validated title/type/monospace composer, UTF-16 entities, long-body integration, CLI flags, and compiled message acceptance tests | internal/message/planner.go, internal/message/planner_test.go, internal/message/basic.go, internal/message/basic_test.go, internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/cli/root_test.go, internal/apperr/error.go, test/e2e/message_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, planner fuzz all pass; T-MSG-01..09 pass | pending-2.3 |
+| 13 | sub-phase | 2.3 | agent-2:sonnet | Replaced BasicPlanner with the validated title/type/monospace composer, UTF-16 entities, long-body integration, CLI flags, and compiled message acceptance tests | internal/message/planner.go, internal/message/planner_test.go, internal/message/basic.go, internal/message/basic_test.go, internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/cli/root_test.go, internal/apperr/error.go, test/e2e/message_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, planner fuzz all pass; T-MSG-01..09 pass | 04ae677 |
 
 ## 5. Files touched
 
