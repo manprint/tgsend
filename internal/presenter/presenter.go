@@ -30,9 +30,59 @@ type VersionResult struct {
 
 // ErrorBody is the safe, machine-readable error payload.
 type ErrorBody struct {
-	Code      string `json:"code"`
-	Message   string `json:"message"`
-	Retryable bool   `json:"retryable"`
+	Code      string        `json:"code"`
+	Message   string        `json:"message"`
+	Retryable bool          `json:"retryable"`
+	Progress  *ProgressBody `json:"progress,omitempty"`
+}
+
+// ProgressBody reports the completed portion of a partially sent plan.
+type ProgressBody struct {
+	ChunksTotal int `json:"chunks_total"`
+	ChunksSent  int `json:"chunks_sent"`
+	FailedChunk int `json:"failed_chunk"`
+}
+
+// SendResult is the result of a real send or an offline dry-run preview.
+type SendResult struct {
+	DryRun      bool           `json:"dry_run"`
+	ChunksTotal int            `json:"chunks_total"`
+	ChunksSent  int            `json:"chunks_sent"`
+	MessageIDs  []int64        `json:"message_ids"`
+	Chunks      []PreviewChunk `json:"chunks,omitempty"`
+}
+
+// Entity is the JSON-safe subset of a Telegram message entity used in previews.
+type Entity struct {
+	Type   string `json:"type"`
+	Offset int    `json:"offset"`
+	Length int    `json:"length"`
+}
+
+// PreviewChunk is one planned message in a dry-run response.
+type PreviewChunk struct {
+	Index               int      `json:"index"`
+	Text                string   `json:"text"`
+	Entities            []Entity `json:"entities"`
+	DisableNotification bool     `json:"disable_notification"`
+}
+
+// MarshalJSON keeps arrays present and non-null in all serialized results.
+func (result SendResult) MarshalJSON() ([]byte, error) {
+	type sendResult SendResult
+	if result.MessageIDs == nil {
+		result.MessageIDs = []int64{}
+	}
+	return json.Marshal(sendResult(result))
+}
+
+// MarshalJSON keeps the preview entity array present and non-null.
+func (chunk PreviewChunk) MarshalJSON() ([]byte, error) {
+	type previewChunk PreviewChunk
+	if chunk.Entities == nil {
+		chunk.Entities = []Entity{}
+	}
+	return json.Marshal(previewChunk(chunk))
 }
 
 // Encode writes exactly one JSON document and its terminating newline.
@@ -64,6 +114,16 @@ func WriteError(w io.Writer, command string, body ErrorBody) error {
 	})
 }
 
+// WriteSend writes one stable send or dry-run response.
+func WriteSend(w io.Writer, result SendResult) error {
+	return Encode(w, Envelope{
+		SchemaVersion: schemaVersion,
+		OK:            true,
+		Command:       "send",
+		Result:        result,
+	})
+}
+
 // ErrorBodyFrom converts an application error without serializing its cause.
 func ErrorBodyFrom(err error) ErrorBody {
 	var appErr *apperr.Error
@@ -74,9 +134,17 @@ func ErrorBodyFrom(err error) ErrorBody {
 			Retryable: false,
 		}
 	}
-	return ErrorBody{
+	body := ErrorBody{
 		Code:      string(appErr.Code),
 		Message:   appErr.Message,
 		Retryable: appErr.Kind == apperr.KindRateLimit,
 	}
+	if appErr.Progress != nil {
+		body.Progress = &ProgressBody{
+			ChunksTotal: appErr.Progress.ChunksTotal,
+			ChunksSent:  appErr.Progress.ChunksSent,
+			FailedChunk: appErr.Progress.FailedChunk,
+		}
+	}
+	return body
 }

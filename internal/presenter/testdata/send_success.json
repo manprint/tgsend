@@ -1,0 +1,1 @@
+{"schema_version":"1","ok":true,"command":"send","result":{"dry_run":false,"chunks_total":2,"chunks_sent":2,"message_ids":[101,102]}}

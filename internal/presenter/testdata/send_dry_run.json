@@ -1,0 +1,1 @@
+{"schema_version":"1","ok":true,"command":"send","result":{"dry_run":true,"chunks_total":2,"chunks_sent":0,"message_ids":[],"chunks":[{"index":1,"text":"Hello","entities":[{"type":"bold","offset":0,"length":5}],"disable_notification":true},{"index":2,"text":"world","entities":[],"disable_notification":true}]}}

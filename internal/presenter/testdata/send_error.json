@@ -1,0 +1,1 @@
+{"schema_version":"1","ok":false,"command":"send","error":{"code":"telegram_rejected","message":"Telegram rejected the request","retryable":false}}
