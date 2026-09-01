@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:48 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 02:00 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,11 +23,11 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `5.1`
-- **Status:** `none`
-- **Intent:** Set up release automation, installers, CI, and final operator documentation.
+- **ID:** `5.2`
+- **Status:** `OPEN`
+- **Intent:** Add gated GitHub Actions CI and tag-driven release publication.
 - **Phase:** 5 - Release automation, installers, and final docs (`phase_06.md`)
-- **Next action:** Open phase 5 sub-phase 5.1 and read its release, installer, CI, and documentation requirements before editing.
+- **Next action:** Open phase 5 sub-phase 5.2 and implement the pinned CI/release workflows with policy coverage.
 - **Assigned:** `agent-2:sonnet`
 - **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `15eb53c`
 
@@ -162,6 +162,10 @@ These commands are authoritative and must remain identical to overview/phase gat
 | test/wrapper/wrapper_test.go | Wrapper unit coverage for arguments, stdin, config forms, environment, image override, errors, exit propagation, and shell portability | 4.3 |
 | test/wrapper/testdata/fake-docker.sh | NUL-delimited fake Docker recorder for unambiguous argv/stdin assertions | 4.3 |
 | test/container/smoke.sh | Added real-image wrapper/native dry-run and default-config mount smoke checks | 4.3 |
+| .goreleaser.yaml | Reproducible seven-target archives, SHA-256 checksums, binary/archive SBOMs, and three-platform GHCR image metadata | 5.1 |
+| LICENSE | MIT license with holder manprint | 5.1 |
+| .gitignore | Ignores local release tool downloads | 5.1 |
+| Makefile | Added pinned release tool versions and config/snapshot release targets | 5.1 |
 
 ## 6. In-flight work
 
@@ -178,7 +182,7 @@ none - tree consistent; `.serena/` remains unrelated and untracked
 | Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service send orchestration, CLI, endpoint policy, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
 | E2E | `make test-e2e` | PASS: fresh compiled test-endpoint binary; repeated twice with config-source, flag, exact-input, exit 2-7, failure-position, environment-isolation, and version/help bypass matrix | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
-| Release | `make release-check` | not-run | - |
+| Release | `make release-check` | PASS: GoReleaser v2.18.0 config and snapshot; exactly seven archives, SHA-256 checksums, and Syft v1.51.1 SBOMs for binaries/archives | 2026-09-01 |
 | Container | `make test-container` | PASS: Buildx runtime-only image on linux/amd64; numeric non-root user, version JSON, long Unicode dry-run, wrapper/native equivalence, config path, cleanup, and secret/source history checks | 2026-09-01 |
 | Aggregate | `make verify` | PASS: build, format, lint, race unit, compiled e2e acceptance matrix, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates | 2026-09-01 |
 
@@ -216,7 +220,7 @@ none
 | 2 - Message composition and chunking | phase_03.md | `DONE` | 2.1-2.4 closed; formatting/chunking and README gates pass |
 | 3 - Telegram transport and send orchestration | phase_04.md | `DONE` | 3.1-3.4 closed; Telegram protocol/retry, native serial sends, partial progress, endpoint policy, e2e reference scenario, and README gates pass |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `DONE` | 4.1 acceptance, 4.2 image, 4.3 wrapper, and 4.4 documentation complete |
-| 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | - |
+| 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | 5.1 release configuration complete; CI, installers, artifact checks, and final README remain |
 
 ### Tests
 
@@ -277,10 +281,10 @@ none
 | T-WRP-04 | wrapper | `DONE` | Exit status preservation |
 | T-WRP-05 | wrapper | `DONE` | Secret absent from argv/stderr |
 | T-WRP-06 | wrapper | `DONE` | Linux/macOS POSIX syntax |
-| T-REL-01 | release | `TODO` | GoReleaser config check |
-| T-REL-02 | release | `TODO` | Seven target artifacts plus metadata |
-| T-REL-03 | release | `TODO` | Archive content/build metadata |
-| T-REL-04 | release | `TODO` | Docker v2 three-platform config |
+| T-REL-01 | release | `DONE` | GoReleaser v2.18.0 config check |
+| T-REL-02 | release | `DONE` | Snapshot seven target archives, checksums, and SBOMs |
+| T-REL-03 | release | `DONE` | Archive members and linked snapshot build metadata generated |
+| T-REL-04 | release | `DONE` | Docker v2 declares exactly three Linux platforms with OCI metadata |
 | T-REL-05 | release | `TODO` | Snapshot artifact checker |
 | T-REL-06 | release | `TODO` | Missing artifact negative fixture |
 | T-REL-07 | release | `TODO` | Installer/generated-name agreement |
@@ -314,7 +318,7 @@ none
 | README.md | 3 | `DONE` | Complete native send/retry/failure behavior and seven original workflows |
 | README.md | 4 | `DONE` | Docker/wrapper local use, image selection, security, limits, and troubleshooting |
 | README.md | 5 | `TODO` | Release/install/agentic/final guide |
-| LICENSE | 5 | `TODO` | MIT, holder manprint |
+| LICENSE | 5 | `DONE` | MIT, holder manprint |
 
 ### Audits
 
