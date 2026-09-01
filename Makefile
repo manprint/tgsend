@@ -41,6 +41,7 @@ release-check:
 	test "$$(syft version | sed -n 's/^Version:[[:space:]]*//p')" = "$(SYFT_VERSION:v%=%)"
 	goreleaser check
 	goreleaser release --snapshot --clean --skip=publish,docker
+	sh scripts/check-release.sh dist
 
 release-snapshot:
 	goreleaser release --snapshot --clean
