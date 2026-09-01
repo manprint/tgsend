@@ -21,7 +21,7 @@ func TestDryRunSkipsConfig(t *testing.T) {
 			called = true
 			return config.Config{}, errors.New("config must not be loaded")
 		},
-		Planner: message.BasicPlanner{},
+		Planner: message.Planner{},
 	}
 	result, err := service.Run(context.Background(), Options{DryRun: true, MaxInputBytes: 100})
 	if err != nil {
@@ -39,10 +39,10 @@ func TestDryRunCallsPlannerOnce(t *testing.T) {
 	calls := 0
 	service := &Service{
 		ReadInput: func(input.Source) (string, error) { return "body", nil },
-		Planner: plannerFunc(func(body string, silent bool) ([]message.Chunk, error) {
+		Planner: plannerFunc(func(body string, options message.Options) ([]message.Chunk, error) {
 			calls++
-			if body != "body" || !silent {
-				t.Fatalf("planner arguments = %q, %v", body, silent)
+			if body != "body" || !options.Silent {
+				t.Fatalf("planner arguments = %q, %#v", body, options)
 			}
 			return []message.Chunk{{Text: body, Entities: []message.Entity{}}}, nil
 		}),
@@ -61,7 +61,7 @@ func TestApplicationValidationOrder(t *testing.T) {
 	wantErr := apperr.New(apperr.KindInput, apperr.CodeInputEmpty, "input is empty", nil)
 	service := &Service{
 		ReadInput: func(input.Source) (string, error) { return "", wantErr },
-		Planner: plannerFunc(func(string, bool) ([]message.Chunk, error) {
+		Planner: plannerFunc(func(string, message.Options) ([]message.Chunk, error) {
 			plannerCalled = true
 			return nil, nil
 		}),
@@ -79,7 +79,7 @@ func TestNonDryDoesNotAttemptNetwork(t *testing.T) {
 	senderCalled := false
 	service := &Service{
 		ReadInput: func(input.Source) (string, error) { return "Hello", nil },
-		Planner:   message.BasicPlanner{},
+		Planner:   message.Planner{},
 		Sender: senderFunc(func(context.Context, config.Config, []message.Chunk) ([]int64, error) {
 			senderCalled = true
 			return nil, nil
@@ -101,7 +101,7 @@ func TestNonDryDoesNotAttemptNetwork(t *testing.T) {
 func TestPreviewPreservesEntitiesAndText(t *testing.T) {
 	service := &Service{
 		ReadInput: func(input.Source) (string, error) { return strings.Repeat("x", 3), nil },
-		Planner: plannerFunc(func(string, bool) ([]message.Chunk, error) {
+		Planner: plannerFunc(func(string, message.Options) ([]message.Chunk, error) {
 			return []message.Chunk{{Text: "x\r\n", Entities: []message.Entity{{Type: "bold", Offset: 0, Length: 1}}}}, nil
 		}),
 	}
@@ -111,10 +111,10 @@ func TestPreviewPreservesEntitiesAndText(t *testing.T) {
 	}
 }
 
-type plannerFunc func(string, bool) ([]message.Chunk, error)
+type plannerFunc func(string, message.Options) ([]message.Chunk, error)
 
-func (function plannerFunc) Plan(body string, silent bool) ([]message.Chunk, error) {
-	return function(body, silent)
+func (function plannerFunc) Plan(body string, options message.Options) ([]message.Chunk, error) {
+	return function(body, options)
 }
 
 type senderFunc func(context.Context, config.Config, []message.Chunk) ([]int64, error)

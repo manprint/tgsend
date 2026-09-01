@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:15 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 01:30 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `2.3`
+- **ID:** `2.4`
 - **Status:** `none`
-- **Intent:** Implement the final planner, formatting options, and CLI integration.
+- **Intent:** Update README with the shipped phase-two formatting and chunking behavior.
 - **Phase:** 2 - Message composition and chunking (`phase_03.md`)
-- **Next action:** Open sub-phase 2.3, then implement title/type/monospace composition, entities, planner integration, and acceptance tests.
-- **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `beeec45`
+- **Next action:** Open sub-phase 2.4, then update the user-facing formatting, chunking, limits, and offline-status documentation and execute examples.
+- **Assigned:** `agent-3:haiku`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `pending-2.3`
 
 ## 2. Feature context (self-contained recap)
 
@@ -69,6 +69,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | aec27ac |
 | 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | b85a3c3 |
 | 12 | sub-phase | 2.2 | agent-2:sonnet | Added deterministic UTF-16-bounded body splitting with newline preference, CRLF preservation, progress checks, reconstruction tests, and fuzz coverage | internal/message/split.go, internal/message/split_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | beeec45 |
+| 13 | sub-phase | 2.3 | agent-2:sonnet | Replaced BasicPlanner with the validated title/type/monospace composer, UTF-16 entities, long-body integration, CLI flags, and compiled message acceptance tests | internal/message/planner.go, internal/message/planner_test.go, internal/message/basic.go, internal/message/basic_test.go, internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/cli/root_test.go, internal/apperr/error.go, test/e2e/message_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, planner fuzz all pass; T-MSG-01..09 pass | pending-2.3 |
 
 ## 5. Files touched
 
@@ -117,10 +118,20 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/message/utf16_test.go | UTF-16 table, boundary, invalid-input, overflow, and fuzz tests | 2.1 |
 | internal/message/split.go | Deterministic newline-preferred UTF-16-bounded body splitter | 2.2 |
 | internal/message/split_test.go | Split boundary, Unicode, reconstruction, bounds, and fuzz tests | 2.2 |
+| internal/message/planner.go | Final title/type/monospace composer and entity validator | 2.3 |
+| internal/message/planner_test.go | Header, severity, entity, limit, raw-path, and planner fuzz tests | 2.3 |
+| internal/message/basic.go | Removed superseded phase-one planner | 2.3 |
+| internal/message/basic_test.go | Removed superseded phase-one planner tests | 2.3 |
+| internal/app/service.go | Forwarded formatting options to the final planner | 2.3 |
+| internal/app/service_test.go | Migrated service planner seam to formatting options | 2.3 |
+| internal/cli/root.go | Added title, type, and monospace flags | 2.3 |
+| internal/cli/root_test.go | Added formatting flag forwarding and default assertions | 2.3 |
+| internal/apperr/error.go | Added safe title-too-long usage code | 2.3 |
+| test/e2e/message_test.go | Compiled binary message splitting and formatting acceptance tests | 2.3 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 2.2; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 2.3; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -130,12 +141,12 @@ none - tree consistent after sub-phase 2.2; `.serena/` remains unrelated and unt
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, planner, service, CLI, UTF-16 primitives, and splitter tests | 2026-09-01 |
-| E2E | `make test-e2e` | PASS: fresh compiled binary harness and input/dry-run/JSON acceptance tests | 2026-09-01 |
+| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service, CLI, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
+| E2E | `make test-e2e` | PASS: fresh compiled binary harness with input/config, dry-run/JSON, splitting, formatting, entity, and validation acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; UTF-16 and splitter fuzz targets passed 3s | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; planner fuzz target passed 3s | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -193,15 +204,15 @@ none
 | T-JSON-02 | e2e | `DONE` | Validation errors/exit taxonomy |
 | T-JSON-03 | e2e | `DONE` | Credential omission |
 | T-DRY-01 | e2e | `DONE` | Offline no-config dry-run |
-| T-MSG-01 | e2e | `TODO` | Newline-preferred split |
-| T-MSG-02 | e2e | `TODO` | Astral fallback split |
-| T-MSG-03 | e2e | `TODO` | No chunk labels |
-| T-MSG-04 | e2e | `TODO` | Exact title preview |
-| T-MSG-05 | e2e | `TODO` | Severity normalization/code points |
-| T-MSG-06 | e2e | `TODO` | Monospace UTF-16 offsets |
-| T-MSG-07 | unit | `TODO` | Unicode reconstruction/bounds table |
-| T-MSG-08 | e2e | `TODO` | Header only first chunk |
-| T-MSG-09 | e2e | `TODO` | Invalid type/title rejected locally |
+| T-MSG-01 | e2e | `DONE` | Newline-preferred split |
+| T-MSG-02 | e2e | `DONE` | Astral fallback split |
+| T-MSG-03 | e2e | `DONE` | No chunk labels |
+| T-MSG-04 | e2e | `DONE` | Exact title preview |
+| T-MSG-05 | e2e | `DONE` | Severity normalization/code points |
+| T-MSG-06 | e2e | `DONE` | Monospace UTF-16 offsets |
+| T-MSG-07 | unit | `DONE` | Unicode reconstruction/bounds table |
+| T-MSG-08 | e2e | `DONE` | Header only first chunk |
+| T-MSG-09 | e2e | `DONE` | Invalid type/title rejected locally |
 | T-TG-01 | integration | `TODO` | Exact successful request |
 | T-TG-02 | integration | `TODO` | API rejection mapping |
 | T-TG-03 | integration | `TODO` | Protocol/transport failure mapping |

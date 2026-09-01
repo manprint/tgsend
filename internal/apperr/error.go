@@ -33,6 +33,7 @@ const (
 	CodeInputUnreadable     Code = "input_unreadable"
 	CodeInputTooLarge       Code = "input_too_large"
 	CodeInputInvalidUTF8    Code = "input_invalid_utf8"
+	CodeTitleTooLong        Code = "title_too_long"
 	CodeTelegramRejected    Code = "telegram_rejected"
 	CodeTelegramTransport   Code = "telegram_transport"
 	CodeTelegramProtocol    Code = "telegram_protocol"

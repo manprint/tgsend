@@ -127,7 +127,7 @@ func TestCLIFlagDefaults(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("Execute() = %d, stderr = %q", code, stderr.String())
 	}
-	if runner.options.MessageSet || runner.options.ConfigExplicit || runner.options.Silent || runner.options.DryRun || runner.options.Message != "" || runner.options.ConfigPath != "" || runner.options.MaxInputBytes != 1<<20 {
+	if runner.options.MessageSet || runner.options.ConfigExplicit || runner.options.Monospace || runner.options.Silent || runner.options.DryRun || runner.options.Message != "" || runner.options.ConfigPath != "" || runner.options.Title != "" || runner.options.Type != "" || runner.options.MaxInputBytes != 1<<20 {
 		t.Fatalf("default options = %#v", runner.options)
 	}
 }
@@ -135,11 +135,11 @@ func TestCLIFlagDefaults(t *testing.T) {
 func TestCLIChangedBits(t *testing.T) {
 	runner := &captureRunner{}
 	var stdout, stderr bytes.Buffer
-	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, []string{"-m", "body", "-c", "custom.toml", "--silent", "--dry-run", "--max-input-bytes", "17"})
+	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, []string{"-m", "body", "-c", "custom.toml", "--title", "Deploy", "--type", "warning", "--monospace", "--silent", "--dry-run", "--max-input-bytes", "17"})
 	if code != 0 {
 		t.Fatalf("Execute() = %d, stderr = %q", code, stderr.String())
 	}
-	want := app.Options{Message: "body", MessageSet: true, ConfigPath: "custom.toml", ConfigExplicit: true, Silent: true, DryRun: true, MaxInputBytes: 17}
+	want := app.Options{Message: "body", MessageSet: true, ConfigPath: "custom.toml", ConfigExplicit: true, Title: "Deploy", Type: "warning", Monospace: true, Silent: true, DryRun: true, MaxInputBytes: 17}
 	if runner.options != want {
 		t.Fatalf("options = %#v, want %#v", runner.options, want)
 	}

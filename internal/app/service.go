@@ -20,6 +20,9 @@ type Options struct {
 	MessageSet     bool
 	ConfigPath     string
 	ConfigExplicit bool
+	Title          string
+	Type           string
+	Monospace      bool
 	Silent         bool
 	DryRun         bool
 	MaxInputBytes  int64
@@ -27,7 +30,7 @@ type Options struct {
 
 // Planner creates message chunks from the exact input body.
 type Planner interface {
-	Plan(body string, silent bool) ([]message.Chunk, error)
+	Plan(body string, options message.Options) ([]message.Chunk, error)
 }
 
 // Sender is the future transport boundary. Phase one deliberately does not invoke it.
@@ -45,14 +48,14 @@ type Service struct {
 	Sender          Sender
 }
 
-// NewService returns the phase-one service with production defaults.
+// NewService returns the offline-capable service with production defaults.
 func NewService(stdin io.Reader, stdinIsTerminal bool) *Service {
 	return &Service{
 		Stdin:           stdin,
 		StdinIsTerminal: stdinIsTerminal,
 		ReadInput:       input.Read,
 		LoadConfig:      config.Load,
-		Planner:         message.BasicPlanner{},
+		Planner:         message.Planner{},
 	}
 }
 
@@ -85,9 +88,14 @@ func (service *Service) Run(ctx context.Context, options Options) (presenter.Sen
 
 	planner := service.Planner
 	if planner == nil {
-		planner = message.BasicPlanner{}
+		planner = message.Planner{}
 	}
-	chunks, err := planner.Plan(body, options.Silent)
+	chunks, err := planner.Plan(body, message.Options{
+		Title:     options.Title,
+		Type:      options.Type,
+		Monospace: options.Monospace,
+		Silent:    options.Silent,
+	})
 	if err != nil {
 		return presenter.SendResult{}, err
 	}

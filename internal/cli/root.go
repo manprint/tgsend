@@ -44,12 +44,18 @@ func NewRoot(deps Dependencies) *cobra.Command {
 	var version bool
 	var message string
 	var configPath string
+	var title string
+	var messageType string
+	var monospace bool
 	var silent bool
 	var dryRun bool
 	var maxInputBytes int64
 	root.Flags().BoolVar(&version, "version", false, "print version information as JSON")
 	root.Flags().StringVarP(&message, "message", "m", "", "message text (mutually exclusive with stdin)")
 	root.Flags().StringVarP(&configPath, "config", "c", "", "configuration file path")
+	root.Flags().StringVar(&title, "title", "", "optional bold title")
+	root.Flags().StringVar(&messageType, "type", "", "optional type: INFO, WARNING, ERROR, or CRITICAL")
+	root.Flags().BoolVar(&monospace, "monospace", false, "format each body chunk as preformatted text")
 	root.Flags().BoolVar(&silent, "silent", false, "disable Telegram notifications")
 	root.Flags().BoolVar(&dryRun, "dry-run", false, "validate and preview without credentials or network")
 	root.Flags().Int64Var(&maxInputBytes, "max-input-bytes", 1<<20, "maximum input size in bytes")
@@ -65,6 +71,9 @@ func NewRoot(deps Dependencies) *cobra.Command {
 			MessageSet:     cmd.Flags().Changed("message"),
 			ConfigPath:     configPath,
 			ConfigExplicit: cmd.Flags().Changed("config"),
+			Title:          title,
+			Type:           messageType,
+			Monospace:      monospace,
 			Silent:         silent,
 			DryRun:         dryRun,
 			MaxInputBytes:  maxInputBytes,
