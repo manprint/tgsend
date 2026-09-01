@@ -224,6 +224,8 @@ func installerCommand(t *testing.T, fixture *releaseFixture, script, installDir,
 		"TGSEND_INSTALL_TEST":     "1",
 		"TGSEND_INSTALL_BASE_URL": fixture.server.URL + "/releases",
 		"TGSEND_INSTALL_DIR":      installDir,
+		"FAKE_UNAME_S":            "Linux",
+		"FAKE_UNAME_M":            "x86_64",
 	}
 	for key, value := range extra {
 		env[key] = value

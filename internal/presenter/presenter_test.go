@@ -218,6 +218,7 @@ func assertGolden(t *testing.T, name string, got []byte) {
 	if err != nil {
 		t.Fatalf("read golden %q: %v", name, err)
 	}
+	want = bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))
 	if !bytes.Equal(got, want) {
 		t.Fatalf("golden %q mismatch:\n got %s want %s", name, got, want)
 	}

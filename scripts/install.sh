@@ -82,9 +82,17 @@ download() {
 }
 
 select_platform() {
-  os_name=$(uname -s 2>/dev/null) || die "cannot determine operating system"
-  machine=$(uname -m 2>/dev/null) || die "cannot determine architecture"
-  case "$os_name:$machine" in
+	if [ "${TGSEND_INSTALL_TEST-}" = 1 ] && [ "${FAKE_UNAME_S+x}" = x ]; then
+		os_name=$FAKE_UNAME_S
+	else
+		os_name=$(uname -s 2>/dev/null) || die "cannot determine operating system"
+	fi
+	if [ "${TGSEND_INSTALL_TEST-}" = 1 ] && [ "${FAKE_UNAME_M+x}" = x ]; then
+		machine=$FAKE_UNAME_M
+	else
+		machine=$(uname -m 2>/dev/null) || die "cannot determine architecture"
+	fi
+	case "$os_name:$machine" in
     Linux:x86_64|Linux:amd64) artifact_suffix=linux_amd64 ;;
     Linux:aarch64|Linux:arm64) artifact_suffix=linux_arm64 ;;
     Linux:armv7l|Linux:armv7|Linux:armhf) artifact_suffix=linux_armv7 ;;

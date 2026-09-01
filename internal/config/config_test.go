@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestEnvironmentCompletesMissingDefault(t *testing.T) {
 	config, err := Load(LoadOptions{
 		HomeDir: func() (string, error) { return "/safe/home", nil },
 		ReadFile: func(path string) ([]byte, error) {
-			if path != "/safe/home/.tgsend" {
+			if path != filepath.Join("/safe/home", ".tgsend") {
 				t.Fatalf("ReadFile path = %q", path)
 			}
 			return nil, fs.ErrNotExist

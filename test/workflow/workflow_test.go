@@ -26,7 +26,7 @@ func readWorkflow(t *testing.T, name string) string {
 	if err != nil {
 		t.Fatalf("read %s: %v", name, err)
 	}
-	return string(data)
+	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
 
 func parseYAML(t *testing.T, name string) map[string]any {

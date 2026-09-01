@@ -17,8 +17,7 @@ printf '%s\n' "$raw" | jq -e '
     if .os == "linux" and .architecture == "arm" and .variant == "v7" then "linux/arm/v7"
     else (.os + "/" + .architecture)
     end;
-  (.manifests | length) == 3 and
-  (.manifests | map(select(.platform != null) | .platform | platform) | sort) == ["linux/amd64", "linux/arm/v7", "linux/arm64"] and
+  ([.manifests[] | select(.platform != null and .platform.os == "linux") | .platform | platform] | sort) == ["linux/amd64", "linux/arm/v7", "linux/arm64"] and
   .annotations["org.opencontainers.image.licenses"] == "MIT" and
   .annotations["org.opencontainers.image.source"] == "https://github.com/manprint/tgsend" and
   (.annotations["org.opencontainers.image.version"] | type == "string" and length > 0) and
