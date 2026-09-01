@@ -1,0 +1,94 @@
+version: 2
+
+project_name: tgsend
+
+builds:
+  - id: tgsend
+    main: ./cmd/tgsend
+    binary: tgsend
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -buildid= -X github.com/manprint/tgsend/internal/buildinfo.version={{ .Version }} -X github.com/manprint/tgsend/internal/buildinfo.commit={{ .FullCommit }} -X github.com/manprint/tgsend/internal/buildinfo.date={{ .Date }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+
+archives:
+  - id: tgsend
+    ids:
+      - tgsend
+    formats:
+      - tar.gz
+    name_template: "tgsend_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    files:
+      - README.md
+      - LICENSE
+    builds_info:
+      group: root
+      owner: root
+      mtime: 2008-01-02T15:04:05Z
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - id: archive
+    artifacts: archive
+    cmd: syft
+    args:
+      - $artifact
+      - --output
+      - spdx-json=$document
+  - id: binary
+    artifacts: binary
+    cmd: syft
+    args:
+      - $artifact
+      - --output
+      - spdx-json=$document
+
+dockers_v2:
+  - id: tgsend
+    ids:
+      - tgsend
+    images:
+      - ghcr.io/manprint/tgsend
+    tags:
+      - "{{ .Tag }}"
+      - "{{ if and (not .IsSnapshot) (not .IsNightly) (eq .Prerelease \"\") }}latest{{ end }}"
+    dockerfile: Dockerfile
+    platforms:
+      - linux/amd64
+      - linux/arm64
+      - linux/arm/v7
+    sbom: true
+    annotations:
+      "index,manifest:org.opencontainers.image.title": tgsend
+      "index,manifest:org.opencontainers.image.description": "Send exact UTF-8 messages to Telegram"
+      "index,manifest:org.opencontainers.image.source": "https://github.com/manprint/tgsend"
+      "index,manifest:org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "index,manifest:org.opencontainers.image.version": "{{ .Version }}"
+      "index,manifest:org.opencontainers.image.licenses": MIT
+
+release:
+  replace_existing_artifacts: true
