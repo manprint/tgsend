@@ -29,7 +29,7 @@ This is the only execution-state file. Position, progress, ledger, verification,
 - **Phase:** 2 - Message composition and chunking (`phase_03.md`)
 - **Next action:** Open sub-phase 2.2, then implement bounded newline-preferred splitting and reconstruction/invariant tests.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last commit `eefb45e`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `b85a3c3`
 
 ## 2. Feature context (self-contained recap)
 
@@ -67,7 +67,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 8 | sub-phase | 1.3 | agent-3:haiku | Added stable send/dry-run JSON schemas, non-null arrays, preview entities, optional progress, and golden fixtures | internal/presenter/presenter.go, internal/presenter/presenter_test.go, internal/presenter/testdata/* | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 473b273 |
 | 9 | sub-phase | 1.4 | agent-2:sonnet | Added shared message types, UTF-16 basic planner, offline service, CLI flags, compiled input/dry-run acceptance tests, and credential-free behavior | internal/message/*, internal/app/*, internal/cli/*, internal/presenter/presenter.go, cmd/tgsend/main.go, test/e2e/input_config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 5d35466 |
 | 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | aec27ac |
-| 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | eefb45e |
+| 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | b85a3c3 |
 
 ## 5. Files touched
 
