@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 02:43 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 02:35 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -22,14 +22,14 @@ This is the only execution-state file. Position, progress, ledger, verification,
 
 ## 1. Current unit
 
-- **Type:** `sub-phase`
-- **ID:** `5.5`
-- **Status:** `OPEN`
-- **Intent:** Complete the public README with install, operation, release, security, and agentic-use guidance.
-- **Phase:** 5 - Release automation, installers, and final docs (`phase_06.md`)
-- **Next action:** Add tested binary/wrapper install examples and final user-facing release/troubleshooting documentation.
-- **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with open-unit state plus unrelated untracked `.serena/` | last implementation commit `a3bfd6c`
+- **Type:** `none`
+- **ID:** `none`
+- **Status:** `none`
+- **Intent:** none
+- **Phase:** All phases complete (`phase_01.md` through `phase_06.md`)
+- **Next action:** none
+- **Assigned:** none
+- **Repo state:** branch `main` | working tree clean except unrelated untracked `.serena/` | last implementation commit `afc459b`
 
 ## 2. Feature context (self-contained recap)
 
@@ -81,6 +81,8 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 22 | sub-phase | 4.4 | agent-2:sonnet | Documented local image builds, direct Docker use, POSIX wrapper installation and behavior, image selection, security boundaries, platform limits, and troubleshooting | README.md | make verify; make test-container; README dry-run/image/wrapper examples validated | 15eb53c |
 | 23 | sub-phase | 5.3 | agent-2:sonnet | Added checksum-verifying binary and Docker-wrapper installers with strict version/platform/URL policy, bounded archive extraction, JSON/syntax validation, atomic replacement, cleanup traps, and HTTP fixture adversarial tests | scripts/install.sh, scripts/install-wrapper.sh, test/installer/installer_test.go, .goreleaser.yaml, .gitignore | installer race/e2e tests, ShellCheck, POSIX syntax, GoReleaser snapshot, container smoke all pass | 3fccd51 |
 | 24 | sub-phase | 5.4 | agent-2:sonnet | Added local release artifact completeness checker, OCI image manifest checker, negative fixture tests, exact installer/release-name validation, forbidden-artifact scan, and post-publish GHCR manifest gate | scripts/check-release.sh, scripts/check-image.sh, test/release/release_test.go, Makefile, .github/workflows/release.yml | make verify, release snapshot/artifact acceptance, race checker tests, shell checks, and container acceptance pass | a3bfd6c |
+| 25 | sub-phase | 5.5 | agent-2:sonnet | Completed the public release, installation, Docker fallback, agentic-use, security, support, and troubleshooting guide; linked installer examples to release fixtures | README.md, test/installer/installer_test.go | README policy scan, installer fixture examples, make verify, release-check, test-container, ShellCheck, and git diff check pass | afc459b |
+| 26 | verify | 001-final | agent-2:sonnet | Audited plan 001 against repository truth; all phases, regression tests, documentation checks, release checks, and container checks are complete | docs/plans/001_plan-Tgsend/STATE.md | six phases DONE, no state TODO rows, all tracked test rows DONE, and final Git/public-document boundary checks pass | pending |
 
 ## 5. Files touched
 
@@ -149,6 +151,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | test/e2e/server_test.go | Loopback fake Telegram server with decoded request recording and scripted responses | 3.3 |
 | test/e2e/send_test.go | Native send, ordered multi-chunk, partial failure, and full Unicode reference acceptance tests | 3.3 |
 | README.md | Complete native sender guide with seven workflows, retry/failure semantics, security, limits, and manual smoke procedure | 3.4 |
+| README.md | Final release installation, Docker fallback, agentic operations, release support, and troubleshooting guide | 5.5 |
 | test/e2e/main_test.go | Windows-aware compiled executable suffix and isolated build environment | 4.1 |
 | test/e2e/harness_test.go | HOME injection, exact environment replacement, portable exit-code extraction, helper-process timeout cleanup, and environment tests | 4.1 |
 | test/e2e/cli_test.go | Version/help side-effect bypass acceptance with hostile endpoint and secret sentinel | 4.1 |
@@ -167,6 +170,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | scripts/install.sh | POSIX binary installer with version/platform mapping, HTTPS policy, exact SHA-256 verification, JSON validation, and atomic 0755 replacement | 5.3 |
 | scripts/install-wrapper.sh | POSIX wrapper installer with exact SHA-256 verification, shell syntax validation, and atomic 0755 replacement | 5.3 |
 | test/installer/installer_test.go | Local HTTP release fixtures and adversarial installer/wrapper acceptance tests | 5.3 |
+| test/installer/installer_test.go | README installer URLs and platform/version examples execute against release fixtures | 5.5 |
 | scripts/check-release.sh | Snapshot archive/checksum/SBOM/member/native/installer/security acceptance checker | 5.4 |
 | scripts/check-image.sh | OCI manifest platform and metadata acceptance checker using Buildx imagetools | 5.4 |
 | test/release/release_test.go | Positive/negative release fixtures and extra-platform image checker tests | 5.4 |
@@ -186,7 +190,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 
 ## 6. In-flight work
 
-claimed - nothing written yet; `.serena/` remains unrelated and untracked
+none - tree consistent; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -202,10 +206,11 @@ claimed - nothing written yet; `.serena/` remains unrelated and untracked
 | Release | `make release-check` | PASS: GoReleaser v2.18.0 config and snapshot; exactly seven archives, SHA-256 checksums, Syft v1.51.1 SBOMs for binaries/archives, and generated wrapper checksum hook | 2026-09-01 |
 | Container | `make test-container` | PASS: Buildx runtime-only image on linux/amd64; numeric non-root user, version JSON, long Unicode dry-run, wrapper/native equivalence, config path, cleanup, and secret/source history checks | 2026-09-01 |
 | Aggregate | `make verify` | PASS: build, format, lint, race unit, compiled e2e acceptance matrix, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates | 2026-09-01 |
-| Installer | `go test -race ./test/installer` | PASS: latest/pinned URLs, five supported mappings, exact checksum/truncation/missing-entry failures, atomic replacement, cleanup, wrapper syntax/forwarding, mode, and redaction | 2026-09-01 |
+| Installer | `go test -race ./test/installer` | PASS: latest/pinned URLs, five supported mappings, exact checksum/truncation/missing-entry failures, atomic replacement, cleanup, wrapper syntax/forwarding, mode, redaction, and README install examples | 2026-09-01 |
 | Shell installer | `shellcheck scripts/install.sh scripts/install-wrapper.sh` | PASS: no diagnostics; `sh -n` passes | 2026-09-01 |
 | Release artifact checker | `sh scripts/check-release.sh dist` | PASS: seven archives, 21 checksums, 14 SBOMs, safe tar/zip members, native version, installer names, wrapper checksum, and release secret boundary | 2026-09-01 |
 | Image manifest checker | `go test -race ./test/release` | PASS: valid three-platform OCI fixture accepted; extra platform rejected; post-publish workflow gate wired | 2026-09-01 |
+| Final plan audit | state assertions and repository inspection | PASS: six phases DONE, no state TODO rows, all tracked test rows DONE, and only unrelated `.serena/` remains untracked | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -241,7 +246,7 @@ none
 | 2 - Message composition and chunking | phase_03.md | `DONE` | 2.1-2.4 closed; formatting/chunking and README gates pass |
 | 3 - Telegram transport and send orchestration | phase_04.md | `DONE` | 3.1-3.4 closed; Telegram protocol/retry, native serial sends, partial progress, endpoint policy, e2e reference scenario, and README gates pass |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `DONE` | 4.1 acceptance, 4.2 image, 4.3 wrapper, and 4.4 documentation complete |
-| 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | 5.1 release configuration and 5.2 gated workflows complete; installers, artifact checks, and final README remain |
+| 5 - Release automation, installers, and final docs | phase_06.md | `DONE` | 5.1-5.5 closed; release automation, gated workflows, installers, artifact checks, final README, and all phase gates pass |
 
 ### Tests
 
@@ -257,8 +262,8 @@ none
 | T-CFG-01 | e2e | `DONE` | Default HOME config through compiled stdin send |
 | T-CFG-02 | e2e | `DONE` | Explicit config selection through compiled message send |
 | T-CFG-03 | e2e | `DONE` | Environment-only config through compiled native send |
-| T-CFG-04 | e2e | `TODO` | Explicit missing config error |
-| T-CFG-05 | e2e | `TODO` | Strict TOML/redaction |
+| T-CFG-04 | e2e | `DONE` | Explicit missing config maps to `config_not_found` without credential leakage |
+| T-CFG-05 | e2e | `DONE` | Strict TOML unknown-key/type rejection and redaction coverage |
 | T-JSON-01 | e2e | `DONE` | Dry-run stdout-only JSON |
 | T-JSON-02 | e2e | `DONE` | Validation errors/exit taxonomy |
 | T-JSON-03 | e2e | `DONE` | Credential omission |
@@ -324,7 +329,7 @@ none
 | T-INS-06 | installer | `DONE` | Installer redaction |
 | T-DOC-01 | docs | `DONE` | Dry-run examples execute in isolated HOME with JSON assertions |
 | T-DOC-02 | docs | `DONE` | Send examples map to compiled loopback fake-endpoint e2e coverage |
-| T-DOC-03 | docs | `TODO` | Install examples execute |
+| T-DOC-03 | docs | `DONE` | Binary and wrapper install examples execute against release fixtures |
 | T-DOC-04 | docs | `DONE` | Original seven scenarios are executable command examples |
 | T-DOC-05 | docs | `DONE` | README flag list/defaults match compiled help |
 | T-DOC-06 | docs | `DONE` | README contains placeholders only and no hidden test switch |
@@ -338,7 +343,7 @@ none
 | README.md | 2 | `DONE` | Formatting/chunking preview and offline dry-run behavior |
 | README.md | 3 | `DONE` | Complete native send/retry/failure behavior and seven original workflows |
 | README.md | 4 | `DONE` | Docker/wrapper local use, image selection, security, limits, and troubleshooting |
-| README.md | 5 | `TODO` | Release/install/agentic/final guide |
+| README.md | 5 | `DONE` | Release/install/agentic/final guide with tested installer examples, release support, and troubleshooting |
 | LICENSE | 5 | `DONE` | MIT, holder manprint |
 
 ### Audits
