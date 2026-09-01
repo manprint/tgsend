@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:08 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 01:20 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `3.3`
+- **ID:** `3.4`
 - **Status:** `none`
-- **Intent:** Complete native application send orchestration and process-level behavior.
+- **Intent:** Update README for the completed native sender and the full operator workflow.
 - **Phase:** 3 - Telegram transport and send orchestration (`phase_04.md`)
-- **Next action:** Read sub-phase 3.3 requirements, open the unit, then wire configuration, serial chunk sending, progress reporting, build metadata, and the loopback-only e2e path.
+- **Next action:** Read sub-phase 3.4 requirements, open the unit, then update README with native sends, retries, failures, security, and verified usage.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `107c438`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `5bbbe13`
 
 ## 2. Feature context (self-contained recap)
 
@@ -73,6 +73,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 14 | sub-phase | 2.4 | agent-3:haiku | Updated README with phase-two formatting, UTF-16 chunking, limits, dry-run entities, examples, and offline status | README.md | README examples parsed successfully; build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 38dbb59 |
 | 15 | sub-phase | 3.1 | agent-2:sonnet | Added one-attempt Telegram `sendMessage` JSON client with bounded response parsing, secret-safe typed errors, response closing, and base URL validation; stabilized vuln gate on patched Go 1.26.6 scanner runtime | internal/telegram/client.go, internal/telegram/client_test.go, Makefile | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; protocol/request/redaction tests pass | 80062ec |
 | 16 | sub-phase | 3.2 | agent-2:sonnet | Added bounded explicit-429 retry policy with production context-aware sleeper, overflow/budget checks, and exhaustive no-retry/attempt-count tests | internal/telegram/retry.go, internal/telegram/retry_test.go, internal/telegram/client.go, internal/telegram/client_test.go | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; retry policy tests pass | 107c438 |
+| 17 | sub-phase | 3.3 | agent-2:sonnet | Replaced the offline no-send branch with configuration-aware serial native sends, ordered message IDs, exact partial progress, a 10-second production HTTP client, loopback-only e2e endpoint controls, and the reference Unicode process test | internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/buildinfo/buildinfo.go, cmd/tgsend/main.go, cmd/tgsend/main_test.go, internal/telegram/retry.go, test/e2e/main_test.go, test/e2e/server_test.go, test/e2e/send_test.go | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; T-TG-07..09 and T-E2E-08 pass | 5bbbe13 |
 
 ## 5. Files touched
 
@@ -81,7 +82,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | go.mod | Go 1.27 module with pinned Cobra and TOML dependencies | 0.1 |
 | go.sum | Tidy dependency checksums | 0.1 |
 | cmd/tgsend/main.go | Compile-safe entrypoint placeholder | 0.1 |
-| internal/buildinfo/buildinfo.go | Linkable build metadata API | 0.1 |
+| internal/buildinfo/buildinfo.go | Linkable build metadata API and test-endpoint build gate | 0.1, 3.3 |
 | internal/buildinfo/buildinfo_test.go | Default and linker-variable tests | 0.1 |
 | internal/tools/tools.go | Build-tagged retention of planned direct dependencies | 0.1 |
 | Makefile | Build, format, lint, test, e2e, vulnerability, and verify gates | 0.1 |
@@ -112,9 +113,9 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/message/basic_test.go | Planner raw-text and UTF-16 boundary tests | 1.4 |
 | internal/app/service.go | Input, planning, dry-run, and phase-one transport boundary service | 1.4 |
 | internal/app/service_test.go | Service ordering, dry-run, and network isolation tests | 1.4 |
-| internal/cli/root.go | Registered phase-one message/config/silent/dry-run/input-limit flags and runner wiring | 1.4 |
+| internal/cli/root.go | Registered phase-one message/config/silent/dry-run/input-limit flags and runner wiring; removed obsolete no-send wording | 1.4, 3.3 |
 | internal/cli/root_test.go | CLI defaults, Changed bits, and application stream/exit tests | 1.4 |
-| cmd/tgsend/main.go | Constructed production offline application service | 1.4 |
+| cmd/tgsend/main.go | Constructed production native sender, 10-second HTTP client, retry sleeper, and endpoint gate | 1.4, 3.3 |
 | test/e2e/input_config_test.go | Compiled input, dry-run, JSON, conflict, empty, and limit acceptance tests | 1.4 |
 | README.md | Phase-one user guide for usage, configuration, JSON, dry-run, limits, exit codes, and troubleshooting | 1.5 |
 | internal/message/utf16.go | Checked UTF-16 code-unit length, prefix, offset, and addition primitives | 2.1 |
@@ -125,36 +126,40 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/message/planner_test.go | Header, severity, entity, limit, raw-path, and planner fuzz tests | 2.3 |
 | internal/message/basic.go | Removed superseded phase-one planner | 2.3 |
 | internal/message/basic_test.go | Removed superseded phase-one planner tests | 2.3 |
-| internal/app/service.go | Forwarded formatting options to the final planner | 2.3 |
-| internal/app/service_test.go | Migrated service planner seam to formatting options | 2.3 |
+| internal/app/service.go | Forwarded formatting options to the final planner and added config/send orchestration with progress | 2.3, 3.3 |
+| internal/app/service_test.go | Migrated service planner seam and added send ordering, validation, progress, dry-run, and serialization tests | 2.3, 3.3 |
 | internal/cli/root.go | Added title, type, and monospace flags | 2.3 |
 | internal/cli/root_test.go | Added formatting flag forwarding and default assertions | 2.3 |
 | internal/apperr/error.go | Added safe title-too-long usage code | 2.3 |
 | test/e2e/message_test.go | Compiled binary message splitting and formatting acceptance tests | 2.3 |
 | internal/telegram/client.go | Telegram Bot API request/response client, bounded retry integration, safe errors, and bounded response reads | 3.1, 3.2 |
 | internal/telegram/client_test.go | Telegram request, response, retry integration, redaction, closure, cancellation, and endpoint validation tests | 3.1, 3.2 |
-| internal/telegram/retry.go | Context-aware bounded retry policy for explicit HTTP/API 429 responses | 3.2 |
+| internal/telegram/retry.go | Context-aware bounded retry policy for explicit HTTP/API 429 responses and production sleeper factory | 3.2, 3.3 |
 | internal/telegram/retry_test.go | Retry delay, cumulative budget, overflow, cancellation, attempt-count, and no-retry tests | 3.2 |
 | Makefile | Vulnerability gate uses patched Go 1.26.6 temporary snapshot runtime | 3.1 |
+| cmd/tgsend/main_test.go | Production/test endpoint policy and loopback validation tests | 3.3 |
+| test/e2e/main_test.go | Fresh compiled e2e binary with test endpoint linker gate | 0.4, 3.3 |
+| test/e2e/server_test.go | Loopback fake Telegram server with decoded request recording and scripted responses | 3.3 |
+| test/e2e/send_test.go | Native send, ordered multi-chunk, partial failure, and full Unicode reference acceptance tests | 3.3 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 3.2; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 3.3; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
 | Gate / test | Command | Last result | When |
 |-------------|---------|-------------|------|
 | Go toolchain | `go version` | PASS: local go1.26.1; module commands auto-selected go1.27.0 | 2026-09-01 |
-| Build | `make build` | PASS | 2026-08-31 |
-| Format | `make fmt-check` | PASS | 2026-08-31 |
-| Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service, CLI, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
-| E2E | `make test-e2e` | PASS: fresh compiled binary harness with input/config, dry-run/JSON, splitting, formatting, entity, and validation acceptance tests | 2026-09-01 |
+| Build | `make build` | PASS | 2026-09-01 |
+| Format | `make fmt-check` | PASS | 2026-09-01 |
+| Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-09-01 |
+| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service send orchestration, CLI, endpoint policy, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
+| E2E | `make test-e2e` | PASS: fresh compiled test-endpoint binary with input/config, dry-run/JSON, splitting, formatting, native Telegram sends, retries, partial progress, entities, and validation acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, vulnerability, Telegram client protocol, and bounded retry gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -227,9 +232,9 @@ none
 | T-TG-04 | integration | `DONE` | One 429 retry then success |
 | T-TG-05 | integration | `DONE` | Retry exhaustion |
 | T-TG-06 | integration | `DONE` | Ambiguous failure never retried |
-| T-TG-07 | e2e | `TODO` | Env credentials real send path |
-| T-TG-08 | e2e | `TODO` | Ordered multi-chunk IDs |
-| T-TG-09 | e2e | `TODO` | Partial failure progress/stop |
+| T-TG-07 | e2e | `DONE` | Env credentials native send path against loopback fake server |
+| T-TG-08 | e2e | `DONE` | Ordered multi-chunk IDs |
+| T-TG-09 | e2e | `DONE` | Partial failure progress/stop |
 | T-E2E-01 | e2e | `TODO` | Default config plus stdin |
 | T-E2E-02 | e2e | `TODO` | Explicit config plus message flag |
 | T-E2E-03 | e2e | `TODO` | Environment precedence |
@@ -237,7 +242,7 @@ none
 | T-E2E-05 | e2e | `TODO` | Dry-run no credentials |
 | T-E2E-06 | e2e | `TODO` | Exit categories 2-7 |
 | T-E2E-07 | e2e | `TODO` | Whitespace/CRLF preservation |
-| T-E2E-08 | e2e | `TODO` | Full reference scenario |
+| T-E2E-08 | e2e | `DONE` | Full reference scenario: Unicode body, first-only header, UTF-16 entities, exact reconstruction, one success JSON |
 | T-E2E-09 | e2e | `TODO` | Failure position variants |
 | T-E2E-10 | e2e | `TODO` | Help/version bypass side effects |
 | T-CTR-01 | container | `TODO` | Image version JSON |
