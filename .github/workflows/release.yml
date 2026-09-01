@@ -86,3 +86,5 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify published image manifest
+        run: sh scripts/check-image.sh ghcr.io/manprint/tgsend:${GITHUB_REF_NAME}

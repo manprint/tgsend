@@ -207,13 +207,13 @@ func cleanEnvironment(extra map[string]string) []string {
 	return env
 }
 
-func runInstaller(t *testing.T, fixture *releaseFixture, script string, extra map[string]string) (string, error, string) {
+func runInstaller(t *testing.T, fixture *releaseFixture, script string, extra map[string]string) (string, string, error) {
 	t.Helper()
 	installDir := t.TempDir()
 	fakeBin := t.TempDir()
 	cmd := installerCommand(t, fixture, script, installDir, fakeBin, extra)
 	out, err := cmd.CombinedOutput()
-	return string(out), err, installDir
+	return string(out), installDir, err
 }
 
 func installerCommand(t *testing.T, fixture *releaseFixture, script, installDir, fakeBin string, extra map[string]string) *exec.Cmd {
@@ -256,7 +256,7 @@ func TestInstallerOSArchMap(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newReleaseFixture(t)
-			out, err, dir := runInstaller(t, f, "install.sh", map[string]string{
+			out, dir, err := runInstaller(t, f, "install.sh", map[string]string{
 				"TGSEND_VERSION": "v" + fixtureVersion,
 				"FAKE_UNAME_S":   tc.osName,
 				"FAKE_UNAME_M":   tc.machine,
@@ -276,7 +276,7 @@ func TestVersionNormalizationAndRejection(t *testing.T) {
 	for _, version := range []string{"1.2.3", "v1.2.3"} {
 		t.Run("accept_"+version, func(t *testing.T) {
 			f := newReleaseFixture(t)
-			if out, err, _ := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": version}); err != nil {
+			if out, _, err := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": version}); err != nil {
 				t.Fatalf("installer rejected %q: %v\n%s", version, err, out)
 			}
 			assertPath(t, f.paths(), "/releases/v1.2.3/tgsend_linux_amd64.tar.gz")
@@ -285,7 +285,7 @@ func TestVersionNormalizationAndRejection(t *testing.T) {
 	for _, version := range []string{"", "1.2", "1.2.3.4", "1.02.3", "v1.2.3-rc1", "1..3"} {
 		t.Run("reject_"+strings.ReplaceAll(version, ".", "_"), func(t *testing.T) {
 			f := newReleaseFixture(t)
-			out, err, dir := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": version})
+			out, dir, err := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": version})
 			if err == nil {
 				t.Fatalf("installer accepted invalid version %q\n%s", version, out)
 			}
@@ -299,7 +299,7 @@ func TestVersionNormalizationAndRejection(t *testing.T) {
 func TestLatestAndPinnedURLs(t *testing.T) {
 	t.Run("latest", func(t *testing.T) {
 		f := newReleaseFixture(t)
-		if out, err, _ := runInstaller(t, f, "install.sh", nil); err != nil {
+		if out, _, err := runInstaller(t, f, "install.sh", nil); err != nil {
 			t.Fatalf("latest install failed: %v\n%s", err, out)
 		}
 		paths := f.paths()
@@ -308,7 +308,7 @@ func TestLatestAndPinnedURLs(t *testing.T) {
 	})
 	t.Run("pinned", func(t *testing.T) {
 		f := newReleaseFixture(t)
-		if out, err, _ := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": "1.2.3"}); err != nil {
+		if out, _, err := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": "1.2.3"}); err != nil {
 			t.Fatalf("pinned install failed: %v\n%s", err, out)
 		}
 		assertPath(t, f.paths(), "/releases/v1.2.3/tgsend_linux_amd64.tar.gz")
@@ -362,7 +362,7 @@ func TestTruncatedDownloadFails(t *testing.T) {
 func TestMissingChecksumEntryFails(t *testing.T) {
 	f := newReleaseFixture(t)
 	f.checksumText = hashLine("unrelated.tar.gz", []byte("unrelated"))
-	out, err, dir := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": fixtureVersion})
+	out, dir, err := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": fixtureVersion})
 	if err == nil || !strings.Contains(string(out), "checksum entry") {
 		t.Fatalf("missing checksum entry was not rejected: %v\n%s", err, out)
 	}
@@ -373,7 +373,7 @@ func TestMissingChecksumEntryFails(t *testing.T) {
 
 func TestUnsupportedPlatformFails(t *testing.T) {
 	f := newReleaseFixture(t)
-	out, err, dir := runInstaller(t, f, "install.sh", map[string]string{"FAKE_UNAME_S": "FreeBSD", "FAKE_UNAME_M": "amd64"})
+	out, dir, err := runInstaller(t, f, "install.sh", map[string]string{"FAKE_UNAME_S": "FreeBSD", "FAKE_UNAME_M": "amd64"})
 	if err == nil || !strings.Contains(string(out), "unsupported platform") {
 		t.Fatalf("unsupported platform was not rejected: %v\n%s", err, out)
 	}
@@ -487,29 +487,24 @@ func TestWrapperSyntaxFailureDoesNotInstall(t *testing.T) {
 func TestNoCurlPipeInsideInstaller(t *testing.T) {
 	for _, name := range []string{"install.sh", "install-wrapper.sh"} {
 		data := string(mustRead(scriptPath(t, name)))
-		for _, forbidden := range []string{"| sh", "| bash", "curl", "wget"} {
-			if (forbidden == "curl" || forbidden == "wget") && !strings.Contains(data, forbidden) {
-				t.Fatalf("%s does not document a downloader", name)
-			}
+		if !strings.Contains(data, "curl") && !strings.Contains(data, "wget") {
+			t.Fatalf("%s does not document a downloader", name)
 		}
-		if strings.Contains(data, "curl ") && strings.Contains(data, "curl ") && strings.Contains(data, "| sh") {
+		if strings.Contains(data, "| sh") || strings.Contains(data, "| bash") {
 			t.Fatalf("%s contains a curl-to-shell pipeline", name)
-		}
-		if strings.Contains(data, "| bash") {
-			t.Fatalf("%s contains a bash pipeline", name)
 		}
 	}
 }
 
 func TestInstallMode0755(t *testing.T) {
 	f := newReleaseFixture(t)
-	if out, err, dir := runInstaller(t, f, "install.sh", nil); err != nil {
+	if out, dir, err := runInstaller(t, f, "install.sh", nil); err != nil {
 		t.Fatalf("binary install failed: %v\n%s", err, out)
 	} else if mode := fileMode(t, filepath.Join(dir, "tgsend")); mode != 0o755 {
 		t.Fatalf("binary mode = %o, want 755", mode)
 	}
 	f = newReleaseFixture(t)
-	if out, err, dir := runInstaller(t, f, "install-wrapper.sh", nil); err != nil {
+	if out, dir, err := runInstaller(t, f, "install-wrapper.sh", nil); err != nil {
 		t.Fatalf("wrapper install failed: %v\n%s", err, out)
 	} else if mode := fileMode(t, filepath.Join(dir, "tgsend")); mode != 0o755 {
 		t.Fatalf("wrapper mode = %o, want 755", mode)
@@ -552,7 +547,7 @@ func TestInstallerOutputDoesNotLeakFixtureToken(t *testing.T) {
 	f := newReleaseFixture(t)
 	f.checksumText = hashLine("other.tar.gz", []byte("other"))
 	token := "fixture-secret-token"
-	out, err, _ := runInstaller(t, f, "install.sh", map[string]string{
+	out, _, err := runInstaller(t, f, "install.sh", map[string]string{
 		"TGSEND_VERSION": fixtureVersion,
 		"TGSEND_TOKEN":   token,
 	})
