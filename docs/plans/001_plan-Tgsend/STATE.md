@@ -29,7 +29,7 @@ This is the only execution-state file. Position, progress, ledger, verification,
 - **Phase:** 3 - Telegram transport and send orchestration (`phase_04.md`)
 - **Next action:** Read sub-phase 3.1 requirements, open the unit, then implement the exact Telegram `sendMessage` request boundary and its tests.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with state plus unrelated untracked `.serena/` only | last implementation commit `38dbb59`
+- **Repo state:** branch `main` | working tree clean except unrelated untracked `.serena/` | last implementation commit `38dbb59`
 
 ## 2. Feature context (self-contained recap)
 
@@ -132,7 +132,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 
 ## 6. In-flight work
 
-claimed - nothing written yet; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 2.4; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
