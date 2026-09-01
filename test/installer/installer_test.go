@@ -398,9 +398,11 @@ func TestAtomicReplacement(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("replacement failed: %v\n%s", err, out)
 	}
-	mode := fileMode(t, destination)
-	if mode != 0o755 {
-		t.Fatalf("installed mode = %o, want 755", mode)
+	if runtime.GOOS != "windows" {
+		mode := fileMode(t, destination)
+		if mode != 0o755 {
+			t.Fatalf("installed mode = %o, want 755", mode)
+		}
 	}
 	if bytes.Equal(mustRead(destination), []byte("old")) {
 		t.Fatal("atomic replacement retained old binary")
@@ -502,6 +504,9 @@ func TestNoCurlPipeInsideInstaller(t *testing.T) {
 }
 
 func TestInstallMode0755(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX executable permission bits are not portable to Windows")
+	}
 	f := newReleaseFixture(t)
 	if out, dir, err := runInstaller(t, f, "install.sh", nil); err != nil {
 		t.Fatalf("binary install failed: %v\n%s", err, out)
@@ -517,6 +522,9 @@ func TestInstallMode0755(t *testing.T) {
 }
 
 func TestWrapperInstallsAndInvokesDocker(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the POSIX shell wrapper is not directly executable on Windows")
+	}
 	f := newReleaseFixture(t)
 	dir := t.TempDir()
 	fakeBin := t.TempDir()
