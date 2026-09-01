@@ -216,7 +216,7 @@ func TestHTTP429IncludesRetryFacts(t *testing.T) {
 	client := newTestClient(t, doerFunc(func(*http.Request) (*http.Response, error) {
 		return response(http.StatusTooManyRequests, `{"ok":false,"error_code":429,"parameters":{"retry_after":2}}`), nil
 	}))
-	_, err := client.Send(context.Background(), "chat", message.Chunk{Text: "rate"})
+	_, err := client.sendAttempt(context.Background(), "chat", message.Chunk{Text: "rate"})
 	_ = appError(t, err, apperr.KindRateLimit, apperr.CodeTelegramRateLimited)
 	var failure *attemptFailure
 	if !errors.As(err, &failure) || failure.retryAfter != 2 || failure.statusCode != http.StatusTooManyRequests {
@@ -228,7 +228,7 @@ func TestAPI429IncludesRetryFacts(t *testing.T) {
 	client := newTestClient(t, doerFunc(func(*http.Request) (*http.Response, error) {
 		return response(http.StatusOK, `{"ok":false,"error_code":429,"parameters":{"retry_after":3}}`), nil
 	}))
-	_, err := client.Send(context.Background(), "chat", message.Chunk{Text: "rate"})
+	_, err := client.sendAttempt(context.Background(), "chat", message.Chunk{Text: "rate"})
 	_ = appError(t, err, apperr.KindRateLimit, apperr.CodeTelegramRateLimited)
 	var failure *attemptFailure
 	if !errors.As(err, &failure) || failure.retryAfter != 3 || failure.errorCode != http.StatusTooManyRequests {

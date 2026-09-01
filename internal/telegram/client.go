@@ -40,13 +40,15 @@ type Options struct {
 	Token   string
 	BaseURL string
 	Doer    Doer
+	Sleeper Sleeper
 }
 
 // Client sends one already-planned message chunk to one chat.
 type Client struct {
-	token string
-	base  *url.URL
-	doer  Doer
+	token   string
+	base    *url.URL
+	doer    Doer
+	sleeper Sleeper
 }
 
 type sendMessageRequest struct {
@@ -99,7 +101,11 @@ func NewClient(options Options) (*Client, error) {
 	if doer == nil {
 		doer = http.DefaultClient
 	}
-	return &Client{token: options.Token, base: parsed, doer: doer}, nil
+	sleeper := options.Sleeper
+	if sleeper == nil {
+		sleeper = timerSleeper{}
+	}
+	return &Client{token: options.Token, base: parsed, doer: doer, sleeper: sleeper}, nil
 }
 
 func validateToken(token string) error {
@@ -118,6 +124,13 @@ func validateToken(token string) error {
 // message ID on success and an apperr.Error with a stable, secret-free
 // message on every failure.
 func (client *Client) Send(ctx context.Context, chatID string, chunk message.Chunk) (int64, error) {
+	if client == nil || client.sleeper == nil {
+		return 0, apperr.New(apperr.KindTransport, apperr.CodeTelegramTransport, "Telegram client is not configured", errInvalidClientOptions)
+	}
+	return client.sendWithRetry(ctx, chatID, chunk)
+}
+
+func (client *Client) sendAttempt(ctx context.Context, chatID string, chunk message.Chunk) (int64, error) {
 	if client == nil || client.base == nil || client.doer == nil {
 		return 0, apperr.New(apperr.KindTransport, apperr.CodeTelegramTransport, "Telegram client is not configured", errInvalidClientOptions)
 	}
