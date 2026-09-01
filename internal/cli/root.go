@@ -1,0 +1,80 @@
+// Package cli wires Cobra to the process-level dependencies and output rules.
+package cli
+
+import (
+	"context"
+	"errors"
+	"io"
+	"strings"
+
+	"github.com/manprint/tgsend/internal/apperr"
+	"github.com/manprint/tgsend/internal/buildinfo"
+	"github.com/manprint/tgsend/internal/presenter"
+	"github.com/spf13/cobra"
+)
+
+// Dependencies are the streams and immutable metadata needed by the root CLI.
+type Dependencies struct {
+	Stdin     io.Reader
+	Stdout    io.Writer
+	Stderr    io.Writer
+	BuildInfo buildinfo.Info
+}
+
+// NewRoot creates a root command without process exits or global side effects.
+func NewRoot(deps Dependencies) *cobra.Command {
+	root := &cobra.Command{
+		Use:           "tgsend",
+		Short:         "Send a message to Telegram",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		Args:          noPositionalArgs,
+	}
+	root.SetIn(deps.Stdin)
+	root.SetOut(deps.Stdout)
+	root.SetErr(deps.Stderr)
+
+	var version bool
+	root.Flags().BoolVar(&version, "version", false, "print version information as JSON")
+	root.RunE = func(cmd *cobra.Command, _ []string) error {
+		if version {
+			return presenter.WriteVersion(deps.Stdout, deps.BuildInfo)
+		}
+		return cmd.Help()
+	}
+	return root
+}
+
+func noPositionalArgs(_ *cobra.Command, args []string) error {
+	if len(args) != 0 {
+		return errors.New("positional arguments are not allowed")
+	}
+	return nil
+}
+
+// Execute runs the CLI and returns its stable process exit code.
+func Execute(ctx context.Context, deps Dependencies, args []string) int {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	root := NewRoot(deps)
+	root.SetArgs(args)
+	if err := root.ExecuteContext(ctx); err != nil {
+		appErr := classifyCobraError(err)
+		_ = presenter.WriteError(deps.Stderr, root.Name(), presenter.ErrorBodyFrom(appErr))
+		return apperr.ExitCode(appErr)
+	}
+	return 0
+}
+
+func classifyCobraError(err error) error {
+	var appErr *apperr.Error
+	if errors.As(err, &appErr) && appErr != nil {
+		return appErr
+	}
+
+	if strings.Contains(err.Error(), "flag") {
+		return apperr.New(apperr.KindUsage, apperr.CodeInvalidFlag, "invalid command-line flag", err)
+	}
+	return apperr.New(apperr.KindUsage, apperr.CodeInvalidArguments, "positional arguments are not allowed", err)
+}
