@@ -11,6 +11,10 @@ var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
+
+	// TestEndpointEnabled is false in every normal build. E2E builds enable it
+	// with -ldflags and may then use a loopback-only Telegram endpoint.
+	TestEndpointEnabled = "false"
 )
 
 // Current returns the build metadata. Release tooling overrides the package

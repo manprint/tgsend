@@ -64,7 +64,7 @@ func NewRoot(deps Dependencies) *cobra.Command {
 			return presenter.WriteVersion(deps.Stdout, deps.BuildInfo)
 		}
 		if deps.App == nil {
-			return apperr.New(apperr.KindTransport, apperr.CodeTelegramTransport, "sending is not available in this build phase", nil)
+			return apperr.New(apperr.KindTransport, apperr.CodeTelegramTransport, "application service is not configured", nil)
 		}
 		result, err := deps.App.Run(cmd.Context(), app.Options{
 			Message:        message,

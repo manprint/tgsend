@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(buildDir)
 
 	binaryPath = filepath.Join(buildDir, "tgsend")
-	build := exec.Command("go", "build", "-o", binaryPath, "./cmd/tgsend")
+	build := exec.Command("go", "build", "-ldflags", "-X github.com/manprint/tgsend/internal/buildinfo.TestEndpointEnabled=true", "-o", binaryPath, "./cmd/tgsend")
 	build.Dir = repoRoot
 	build.Env = buildEnvironment(filepath.Join(buildDir, "home"))
 	var output bytes.Buffer

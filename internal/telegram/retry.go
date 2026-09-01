@@ -21,6 +21,11 @@ type Sleeper interface {
 	Sleep(context.Context, time.Duration) error
 }
 
+// NewProductionSleeper returns the context-aware timer used by native sends.
+func NewProductionSleeper() Sleeper {
+	return timerSleeper{}
+}
+
 type timerSleeper struct{}
 
 func (timerSleeper) Sleep(ctx context.Context, delay time.Duration) error {
