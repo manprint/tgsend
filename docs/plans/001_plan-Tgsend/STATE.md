@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:32 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 01:48 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `4.1`
+- **ID:** `5.1`
 - **Status:** `none`
-- **Intent:** Harden compiled process coverage and cover every documented native behavior before packaging.
-- **Phase:** 4 - Binary e2e, image, and Docker wrapper (`phase_05.md`)
-- **Next action:** Open sub-phase 4.2, then add the minimal production image and run the Docker smoke target.
+- **Intent:** Set up release automation, installers, CI, and final operator documentation.
+- **Phase:** 5 - Release automation, installers, and final docs (`phase_06.md`)
+- **Next action:** Open phase 5 sub-phase 5.1 and read its release, installer, CI, and documentation requirements before editing.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with unrelated untracked `.serena/` | last implementation commit `77e1e96`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `15eb53c`
 
 ## 2. Feature context (self-contained recap)
 
@@ -76,6 +76,9 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 17 | sub-phase | 3.3 | agent-2:sonnet | Replaced the offline no-send branch with configuration-aware serial native sends, ordered message IDs, exact partial progress, a 10-second production HTTP client, loopback-only e2e endpoint controls, and the reference Unicode process test | internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/buildinfo/buildinfo.go, cmd/tgsend/main.go, cmd/tgsend/main_test.go, internal/telegram/retry.go, test/e2e/main_test.go, test/e2e/server_test.go, test/e2e/send_test.go | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; T-TG-07..09 and T-E2E-08 pass | 5bbbe13 |
 | 18 | sub-phase | 3.4 | agent-2:sonnet | Rewrote the operator README for native sending, all seven workflows, configuration/env precedence, JSON, limits, retries, partial progress, security, and manual smoke testing; verified offline examples | README.md | README offline examples pass; build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass | ae6cc9b |
 | 19 | sub-phase | 4.1 | agent-2:sonnet | Completed compiled-binary acceptance coverage for config sources, flags, exit categories, exact input, failure positions, environment isolation, Windows process handling, and side-effect bypasses | test/e2e/main_test.go, test/e2e/harness_test.go, test/e2e/cli_test.go, test/e2e/input_config_test.go, test/e2e/send_test.go, test/e2e/server_test.go, test/e2e/acceptance_test.go | make test-e2e twice; make verify; no token/proxy/HOME inheritance; all T-E2E-01..10 pass | 77e1e96 |
+| 20 | sub-phase | 4.2 | agent-2:sonnet | Added runtime-only distroless image, Docker ignore boundary, and static Linux/amd64 smoke target with non-root/version/dry-run/secret checks | Dockerfile, .dockerignore, Makefile, test/container/smoke.sh | make verify; make test-container; image user/platform, version, Unicode dry-run, cleanup, and secret boundary pass | 5193f8e |
+| 21 | sub-phase | 4.3 | agent-2:sonnet | Added Docker-only POSIX wrapper with exact CLI forwarding, config discovery/mounts, name-only secret env forwarding, fake Docker NUL harness, exit propagation, and wrapper/native smoke equivalence | tgsend.sh, test/wrapper/wrapper_test.go, test/wrapper/testdata/fake-docker.sh, test/container/smoke.sh | make verify; make test-container; dash syntax; ShellCheck available version; fake/real wrapper checks pass | 2dad85e |
+| 22 | sub-phase | 4.4 | agent-2:sonnet | Documented local image builds, direct Docker use, POSIX wrapper installation and behavior, image selection, security boundaries, platform limits, and troubleshooting | README.md | make verify; make test-container; README dry-run/image/wrapper examples validated | 15eb53c |
 
 ## 5. Files touched
 
@@ -151,6 +154,14 @@ These commands are authoritative and must remain identical to overview/phase gat
 | test/e2e/send_test.go | First/middle/final API failure progress matrix | 4.1 |
 | test/e2e/server_test.go | Script exhaustion and deep-copy request snapshot tests | 4.1 |
 | test/e2e/acceptance_test.go | Table-driven config, environment precedence, silent flag, and exit 2-7 compiled acceptance tests | 4.1 |
+| Dockerfile | Runtime-only distroless static image, OCI labels, numeric non-root user, and platform binary entrypoint | 4.2 |
+| .dockerignore | Excludes repository metadata, plan/docs/tests, source, local outputs, config, and dependency files from image context | 4.2 |
+| Makefile | Added the `test-container` target | 4.2 |
+| test/container/smoke.sh | Builds and loads a temporary static Linux/amd64 image; verifies platform, user, version, dry-run, cleanup, and secret boundary | 4.2 |
+| tgsend.sh | Docker-only POSIX launcher with config scanning, physical read-only mounts, safe env-name forwarding, and native exit/status behavior | 4.3 |
+| test/wrapper/wrapper_test.go | Wrapper unit coverage for arguments, stdin, config forms, environment, image override, errors, exit propagation, and shell portability | 4.3 |
+| test/wrapper/testdata/fake-docker.sh | NUL-delimited fake Docker recorder for unambiguous argv/stdin assertions | 4.3 |
+| test/container/smoke.sh | Added real-image wrapper/native dry-run and default-config mount smoke checks | 4.3 |
 
 ## 6. In-flight work
 
@@ -168,7 +179,7 @@ none - tree consistent; `.serena/` remains unrelated and untracked
 | E2E | `make test-e2e` | PASS: fresh compiled test-endpoint binary; repeated twice with config-source, flag, exact-input, exit 2-7, failure-position, environment-isolation, and version/help bypass matrix | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
 | Release | `make release-check` | not-run | - |
-| Container | `make test-container` | not-run | - |
+| Container | `make test-container` | PASS: Buildx runtime-only image on linux/amd64; numeric non-root user, version JSON, long Unicode dry-run, wrapper/native equivalence, config path, cleanup, and secret/source history checks | 2026-09-01 |
 | Aggregate | `make verify` | PASS: build, format, lint, race unit, compiled e2e acceptance matrix, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
@@ -204,7 +215,7 @@ none
 | 1 - Input, config, JSON, and offline CLI | phase_02.md | `DONE` | 1.1-1.5 closed; README examples and all phase gates pass |
 | 2 - Message composition and chunking | phase_03.md | `DONE` | 2.1-2.4 closed; formatting/chunking and README gates pass |
 | 3 - Telegram transport and send orchestration | phase_04.md | `DONE` | 3.1-3.4 closed; Telegram protocol/retry, native serial sends, partial progress, endpoint policy, e2e reference scenario, and README gates pass |
-| 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `TODO` | - |
+| 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `DONE` | 4.1 acceptance, 4.2 image, 4.3 wrapper, and 4.4 documentation complete |
 | 5 - Release automation, installers, and final docs | phase_06.md | `TODO` | - |
 
 ### Tests
@@ -255,17 +266,17 @@ none
 | T-E2E-08 | e2e | `DONE` | Full reference scenario: Unicode body, first-only header, UTF-16 entities, exact reconstruction, one success JSON |
 | T-E2E-09 | e2e | `DONE` | First/middle/final failure position variants |
 | T-E2E-10 | e2e | `DONE` | Help/version bypass side effects |
-| T-CTR-01 | container | `TODO` | Image version JSON |
-| T-CTR-02 | container | `TODO` | Image offline stdin dry-run |
-| T-CTR-03 | container | `TODO` | Non-root/platform inspect |
-| T-CTR-04 | container | `TODO` | Reference planning through image |
-| T-CTR-05 | container | `TODO` | No config/secret in image |
-| T-WRP-01 | wrapper | `TODO` | Fake Docker args/stdin/env |
-| T-WRP-02 | wrapper | `TODO` | Wrapper/native dry-run equivalence |
-| T-WRP-03 | wrapper | `TODO` | Wrapper config forms |
-| T-WRP-04 | wrapper | `TODO` | Exit status preservation |
-| T-WRP-05 | wrapper | `TODO` | Secret absent from argv/stderr |
-| T-WRP-06 | wrapper | `TODO` | Linux/macOS POSIX syntax |
+| T-CTR-01 | container | `DONE` | Image version JSON |
+| T-CTR-02 | container | `DONE` | Image offline stdin dry-run |
+| T-CTR-03 | container | `DONE` | Non-root/platform inspect |
+| T-CTR-04 | container | `DONE` | Reference planning through image |
+| T-CTR-05 | container | `DONE` | No config/secret in image |
+| T-WRP-01 | wrapper | `DONE` | Fake Docker args/stdin/env |
+| T-WRP-02 | wrapper | `DONE` | Wrapper/native dry-run equivalence |
+| T-WRP-03 | wrapper | `DONE` | Explicit config forms in fake-Docker tests and default config mount in real image smoke |
+| T-WRP-04 | wrapper | `DONE` | Exit status preservation |
+| T-WRP-05 | wrapper | `DONE` | Secret absent from argv/stderr |
+| T-WRP-06 | wrapper | `DONE` | Linux/macOS POSIX syntax |
 | T-REL-01 | release | `TODO` | GoReleaser config check |
 | T-REL-02 | release | `TODO` | Seven target artifacts plus metadata |
 | T-REL-03 | release | `TODO` | Archive content/build metadata |
@@ -301,7 +312,7 @@ none
 | README.md | 1 | `DONE` | Input/config/JSON/basic dry-run |
 | README.md | 2 | `DONE` | Formatting/chunking preview and offline dry-run behavior |
 | README.md | 3 | `DONE` | Complete native send/retry/failure behavior and seven original workflows |
-| README.md | 4 | `TODO` | Docker/wrapper local use |
+| README.md | 4 | `DONE` | Docker/wrapper local use, image selection, security, limits, and troubleshooting |
 | README.md | 5 | `TODO` | Release/install/agentic/final guide |
 | LICENSE | 5 | `TODO` | MIT, holder manprint |
 
