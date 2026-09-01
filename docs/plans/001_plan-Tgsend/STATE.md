@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 02:04 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 02:24 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `5.3`
-- **Status:** `none`
-- **Intent:** Implement checksum-verifying POSIX installers for binaries and the Docker wrapper.
+- **ID:** `5.4`
+- **Status:** `OPEN`
+- **Intent:** Add release artifact and container manifest acceptance checks.
 - **Phase:** 5 - Release automation, installers, and final docs (`phase_06.md`)
-- **Next action:** Open phase 5 sub-phase 5.3 and implement installers with fixture-backed adversarial tests.
+- **Next action:** Implement snapshot artifact and published image acceptance checkers with negative fixtures.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `b45eabf`
+- **Repo state:** branch `main` | working tree dirty with open-unit state plus unrelated untracked `.serena/` | last implementation commit `3fccd51`
 
 ## 2. Feature context (self-contained recap)
 
@@ -79,6 +79,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 20 | sub-phase | 4.2 | agent-2:sonnet | Added runtime-only distroless image, Docker ignore boundary, and static Linux/amd64 smoke target with non-root/version/dry-run/secret checks | Dockerfile, .dockerignore, Makefile, test/container/smoke.sh | make verify; make test-container; image user/platform, version, Unicode dry-run, cleanup, and secret boundary pass | 5193f8e |
 | 21 | sub-phase | 4.3 | agent-2:sonnet | Added Docker-only POSIX wrapper with exact CLI forwarding, config discovery/mounts, name-only secret env forwarding, fake Docker NUL harness, exit propagation, and wrapper/native smoke equivalence | tgsend.sh, test/wrapper/wrapper_test.go, test/wrapper/testdata/fake-docker.sh, test/container/smoke.sh | make verify; make test-container; dash syntax; ShellCheck available version; fake/real wrapper checks pass | 2dad85e |
 | 22 | sub-phase | 4.4 | agent-2:sonnet | Documented local image builds, direct Docker use, POSIX wrapper installation and behavior, image selection, security boundaries, platform limits, and troubleshooting | README.md | make verify; make test-container; README dry-run/image/wrapper examples validated | 15eb53c |
+| 23 | sub-phase | 5.3 | agent-2:sonnet | Added checksum-verifying binary and Docker-wrapper installers with strict version/platform/URL policy, bounded archive extraction, JSON/syntax validation, atomic replacement, cleanup traps, and HTTP fixture adversarial tests | scripts/install.sh, scripts/install-wrapper.sh, test/installer/installer_test.go, .goreleaser.yaml, .gitignore | installer race/e2e tests, ShellCheck, POSIX syntax, GoReleaser snapshot, container smoke all pass | 3fccd51 |
 
 ## 5. Files touched
 
@@ -162,9 +163,14 @@ These commands are authoritative and must remain identical to overview/phase gat
 | test/wrapper/wrapper_test.go | Wrapper unit coverage for arguments, stdin, config forms, environment, image override, errors, exit propagation, and shell portability | 4.3 |
 | test/wrapper/testdata/fake-docker.sh | NUL-delimited fake Docker recorder for unambiguous argv/stdin assertions | 4.3 |
 | test/container/smoke.sh | Added real-image wrapper/native dry-run and default-config mount smoke checks | 4.3 |
+| scripts/install.sh | POSIX binary installer with version/platform mapping, HTTPS policy, exact SHA-256 verification, JSON validation, and atomic 0755 replacement | 5.3 |
+| scripts/install-wrapper.sh | POSIX wrapper installer with exact SHA-256 verification, shell syntax validation, and atomic 0755 replacement | 5.3 |
+| test/installer/installer_test.go | Local HTTP release fixtures and adversarial installer/wrapper acceptance tests | 5.3 |
 | .goreleaser.yaml | Reproducible seven-target archives, SHA-256 checksums, binary/archive SBOMs, and three-platform GHCR image metadata | 5.1 |
+| .goreleaser.yaml | Added release hook and extra files for generated wrapper checksum and wrapper asset | 5.3 |
 | LICENSE | MIT license with holder manprint | 5.1 |
 | .gitignore | Ignores local release tool downloads | 5.1 |
+| .gitignore | Ignores generated wrapper checksum | 5.3 |
 | Makefile | Added pinned release tool versions and config/snapshot release targets | 5.1 |
 | .github/workflows/ci.yml | PR/main matrix, pinned quality tools, release snapshot, container, and wrapper gates | 5.2 |
 | .github/workflows/release.yml | Semver-tag release gate, GHCR login, Buildx, Syft, and GoReleaser publish job | 5.2 |
@@ -174,7 +180,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 
 ## 6. In-flight work
 
-none - tree consistent; `.serena/` remains unrelated and untracked
+claimed - nothing written yet; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -187,9 +193,11 @@ none - tree consistent; `.serena/` remains unrelated and untracked
 | Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service send orchestration, CLI, endpoint policy, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
 | E2E | `make test-e2e` | PASS: fresh compiled test-endpoint binary; repeated twice with config-source, flag, exact-input, exit 2-7, failure-position, environment-isolation, and version/help bypass matrix | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
-| Release | `make release-check` | PASS: GoReleaser v2.18.0 config and snapshot; exactly seven archives, SHA-256 checksums, and Syft v1.51.1 SBOMs for binaries/archives | 2026-09-01 |
+| Release | `make release-check` | PASS: GoReleaser v2.18.0 config and snapshot; exactly seven archives, SHA-256 checksums, Syft v1.51.1 SBOMs for binaries/archives, and generated wrapper checksum hook | 2026-09-01 |
 | Container | `make test-container` | PASS: Buildx runtime-only image on linux/amd64; numeric non-root user, version JSON, long Unicode dry-run, wrapper/native equivalence, config path, cleanup, and secret/source history checks | 2026-09-01 |
 | Aggregate | `make verify` | PASS: build, format, lint, race unit, compiled e2e acceptance matrix, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates | 2026-09-01 |
+| Installer | `go test -race ./test/installer` | PASS: latest/pinned URLs, five supported mappings, exact checksum/truncation/missing-entry failures, atomic replacement, cleanup, wrapper syntax/forwarding, mode, and redaction | 2026-09-01 |
+| Shell installer | `shellcheck scripts/install.sh scripts/install-wrapper.sh` | PASS: no diagnostics; `sh -n` passes | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -300,12 +308,12 @@ none
 | T-CI-03 | workflow | `DONE` | Release job gated by quality and wired to GHCR/GoReleaser |
 | T-CI-04 | workflow | `DONE` | Workflow policy rejects live Telegram endpoints and secret names |
 | T-CI-05 | manual | `DONE` | Semver tag filter and workflow syntax validated locally without publication |
-| T-INS-01 | installer | `TODO` | Latest binary install |
-| T-INS-02 | installer | `TODO` | Pinned version URLs |
-| T-INS-03 | installer | `TODO` | Checksum fail-closed behavior |
-| T-INS-04 | installer | `TODO` | Wrapper installation/use |
-| T-INS-05 | installer | `TODO` | OS/architecture mapping |
-| T-INS-06 | installer | `TODO` | Installer redaction |
+| T-INS-01 | installer | `DONE` | Latest binary install |
+| T-INS-02 | installer | `DONE` | Pinned version URLs |
+| T-INS-03 | installer | `DONE` | Checksum fail-closed behavior |
+| T-INS-04 | installer | `DONE` | Wrapper installation/use |
+| T-INS-05 | installer | `DONE` | OS/architecture mapping |
+| T-INS-06 | installer | `DONE` | Installer redaction |
 | T-DOC-01 | docs | `DONE` | Dry-run examples execute in isolated HOME with JSON assertions |
 | T-DOC-02 | docs | `DONE` | Send examples map to compiled loopback fake-endpoint e2e coverage |
 | T-DOC-03 | docs | `TODO` | Install examples execute |
