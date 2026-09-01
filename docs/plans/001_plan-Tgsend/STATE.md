@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:25 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:35 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `1.5`
+- **ID:** `2.1`
 - **Status:** `none`
-- **Intent:** Update the phase-one user documentation.
+- **Intent:** Implement deterministic Unicode-aware message splitting.
 - **Phase:** 1 - Input, config, JSON, and offline CLI (`phase_02.md`)
-- **Next action:** Open sub-phase 1.5, then document current CLI flags, configuration, exact input, dry-run, and limitations with executable examples.
+- **Next action:** Open sub-phase 2.1, then implement the message planner, UTF-16 bounds, newline-preferred splitting, and unit/fuzz tests.
 - **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with state update and unrelated untracked `.serena/` only | last commit `pending-1.4`
+- **Repo state:** branch `main` | working tree dirty with README and state update plus unrelated untracked `.serena/` only | last commit `pending-1.5`
 
 ## 2. Feature context (self-contained recap)
 
@@ -65,7 +65,8 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 6 | sub-phase | 1.1 | agent-2:sonnet | Added bounded exact input acquisition with stdin/message precedence, terminal handling, limits, UTF-8 validation, typed errors, and fuzz coverage | internal/input/source.go, internal/input/source_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 979cca9 |
 | 7 | sub-phase | 1.2 | agent-2:sonnet | Added strict TOML/environment configuration loading with path precedence, ChatID normalization, validation, and secret-safe typed errors | internal/config/config.go, internal/config/config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | f42d329 |
 | 8 | sub-phase | 1.3 | agent-3:haiku | Added stable send/dry-run JSON schemas, non-null arrays, preview entities, optional progress, and golden fixtures | internal/presenter/presenter.go, internal/presenter/presenter_test.go, internal/presenter/testdata/* | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 473b273 |
-| 9 | sub-phase | 1.4 | agent-2:sonnet | Added shared message types, UTF-16 basic planner, offline service, CLI flags, compiled input/dry-run acceptance tests, and credential-free behavior | internal/message/*, internal/app/*, internal/cli/*, internal/presenter/presenter.go, cmd/tgsend/main.go, test/e2e/input_config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.4 |
+| 9 | sub-phase | 1.4 | agent-2:sonnet | Added shared message types, UTF-16 basic planner, offline service, CLI flags, compiled input/dry-run acceptance tests, and credential-free behavior | internal/message/*, internal/app/*, internal/cli/*, internal/presenter/presenter.go, cmd/tgsend/main.go, test/e2e/input_config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 5d35466 |
+| 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.5 |
 
 ## 5. Files touched
 
@@ -109,10 +110,11 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/cli/root_test.go | CLI defaults, Changed bits, and application stream/exit tests | 1.4 |
 | cmd/tgsend/main.go | Constructed production offline application service | 1.4 |
 | test/e2e/input_config_test.go | Compiled input, dry-run, JSON, conflict, empty, and limit acceptance tests | 1.4 |
+| README.md | Phase-one user guide for usage, configuration, JSON, dry-run, limits, exit codes, and troubleshooting | 1.5 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 1.4; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 1.5; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -159,7 +161,7 @@ none
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
 | 0 - Foundation and contracts | phase_01.md | `DONE` | 0.1-0.5 closed; build, test, e2e, lint, vulnerability, and README gates pass |
-| 1 - Input, config, JSON, and offline CLI | phase_02.md | `IN_PROGRESS` | 1.1-1.4 closed; next 1.5 README documentation |
+| 1 - Input, config, JSON, and offline CLI | phase_02.md | `DONE` | 1.1-1.5 closed; README examples and all phase gates pass |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `TODO` | - |
@@ -256,7 +258,7 @@ none
 | Doc | Phase | Status | Notes |
 |-----|-------|--------|-------|
 | README.md | 0 | `DONE` | Build/help/version and no-send limitation |
-| README.md | 1 | `TODO` | Input/config/JSON/basic dry-run |
+| README.md | 1 | `DONE` | Input/config/JSON/basic dry-run |
 | README.md | 2 | `TODO` | Formatting/chunking preview |
 | README.md | 3 | `TODO` | Complete native send/retry/failure behavior |
 | README.md | 4 | `TODO` | Docker/wrapper local use |
