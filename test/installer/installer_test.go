@@ -432,6 +432,9 @@ func TestCleanupOnSignalAndFailure(t *testing.T) {
 		assertDirectoryEmpty(t, tmpRoot)
 	})
 	t.Run("signal", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("SIGTERM cleanup is only supported by the POSIX shell test harness")
+		}
 		f := newReleaseFixture(t)
 		f.delayFirstArchive = true
 		tmpRoot := t.TempDir()
