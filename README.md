@@ -9,6 +9,7 @@ at Telegram's UTF-16 limit, and sends the resulting chunks in order.
 
 - Go 1.27.0
 - Make
+- Docker with Buildx (only for the container and wrapper modes)
 
 The first Go command may download modules and the Go 1.27 toolchain selected by
 the module. If Go 1.27 is not installed locally, use a Go toolchain that can
@@ -23,6 +24,80 @@ make build
 ```
 
 The executable is written to `bin/tgsend`.
+
+## Run with Docker
+
+The production image contains only the static `tgsend` binary and its CA
+certificates. It runs as UID/GID `65532:65532`, has no shell or package
+manager, and does not contain a configuration file or credentials.
+
+Build a local image from source for the host platform shown below:
+
+```sh
+image_context=$(mktemp -d)
+mkdir -p "$image_context/linux/amd64"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$image_context/linux/amd64/tgsend" ./cmd/tgsend
+cp Dockerfile .dockerignore "$image_context/"
+docker buildx build --load --platform linux/amd64 -t tgsend:local "$image_context"
+rm -rf "$image_context"
+```
+
+Run with the default configuration file. The mount is read-only and uses the
+same absolute path inside the container:
+
+```sh
+printf 'Hello\n' | docker run --rm -i \
+  --user "$(id -u):$(id -g)" \
+  --env HOME="$HOME" \
+  --mount "type=bind,src=$HOME/.tgsend,dst=$HOME/.tgsend,readonly" \
+  tgsend:local
+```
+
+For environment-only configuration, export both variables and pass their
+names to Docker so their values are not written in the command arguments:
+
+```sh
+export TGSEND_TOKEN='REPLACE_WITH_TELEGRAM_BOT_TOKEN'
+export TGSEND_CHAT_ID='@example_channel'
+printf 'Hello\n' | docker run --rm -i \
+  --user "$(id -u):$(id -g)" \
+  --env HOME="$HOME" --env TGSEND_TOKEN --env TGSEND_CHAT_ID \
+  tgsend:local
+```
+
+The image entrypoint is already `tgsend`, so flags follow the image name:
+
+```sh
+docker run --rm -i --env HOME="$HOME" tgsend:local --dry-run -m 'Hello'
+```
+
+The Dockerfile expects a prebuilt platform directory because compilation is
+intentionally performed outside the image. `make test-container` runs an
+isolated build and smoke test for the image and cleans up its temporary image.
+
+## Docker wrapper
+
+`tgsend.sh` is a Docker-only POSIX launcher for Linux and macOS. Install it
+from a repository checkout and select the image with `TGSEND_IMAGE`:
+
+```sh
+mkdir -p "$HOME/.local/bin"
+cp tgsend.sh "$HOME/.local/bin/tgsend"
+chmod 755 "$HOME/.local/bin/tgsend"
+printf 'Hello\n' | env TGSEND_IMAGE=tgsend:local "$HOME/.local/bin/tgsend"
+```
+
+The wrapper forwards every original flag and stdin byte-for-byte, runs Docker
+with `--rm -i`, the caller's UID/GID and working directory, and mounts only an
+existing default or explicitly selected config file read-only. It supports
+`-c PATH`, `-cPATH`, `--config PATH`, and `--config=PATH`. With no config file,
+set `TGSEND_TOKEN` and `TGSEND_CHAT_ID`; the wrapper passes only those variable
+names to Docker. Container exit codes are returned unchanged.
+
+The wrapper requires Docker and a readable config file when one is selected.
+It does not mount the current directory, the Docker socket, or a config
+parent directory. It is not a Windows/PowerShell wrapper; use the native
+binary or invoke Docker directly on Windows.
 
 ## Usage
 
@@ -129,12 +204,31 @@ independently when non-empty. If the default file is absent, both variables can
 provide the complete configuration. Empty variables do not override a file
 value.
 
+When using `tgsend.sh`, `TGSEND_IMAGE` selects the Docker image and defaults to
+`ghcr.io/manprint/tgsend:latest`. `TGSEND_TOKEN` and `TGSEND_CHAT_ID` are
+forwarded to the container by name; their values are never added to Docker's
+argument list.
+
 Keep credentials in the environment or configuration file, never in command
 arguments. A configuration file should be readable only by its owner:
 
 ```sh
 chmod 600 "$HOME/.tgsend"
 ```
+
+## Image selection
+
+Direct Docker use defaults to the image tag you provide after the build. The
+wrapper defaults to `ghcr.io/manprint/tgsend:latest`; pin it to a local or
+approved tag with `TGSEND_IMAGE`:
+
+```sh
+env TGSEND_IMAGE=tgsend:local "$HOME/.local/bin/tgsend" --dry-run -m 'Hello'
+```
+
+The wrapper does not download or compile a host binary. Docker must be able to
+pull or already have the selected image, and the invoking user must have
+permission to access the Docker daemon.
 
 ## Formatting
 
@@ -224,12 +318,24 @@ printf 'first line\r\nsecond line\n' | HOME="$tmp_home" ./bin/tgsend --dry-run \
   | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["result"]["chunks"][0]["text"] == "first line\r\nsecond line\n"'
 ```
 
+The same offline check through the local image is:
+
+```sh
+printf 'Hello' | env TGSEND_IMAGE=tgsend:local "$HOME/.local/bin/tgsend" --dry-run \
+  | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["ok"] and x["result"]["chunks"][0]["text"] == "Hello"'
+```
+
 ## Security
 
 Do not pass the bot token as a command-line argument. Keep the configuration
 file private, avoid shell tracing while credentials are set, and do not paste
 credentials into issue reports or logs. `tgsend` does not print credentials or
 chat IDs in JSON responses and never sends a dry-run request.
+
+The image contains no credentials, config, source tree, compiler, shell, or
+package manager. The wrapper passes secret values through Docker's environment
+handling rather than its argument vector and mounts only the selected config
+file read-only. Do not use `-v "$PWD:/..."` or mount the Docker socket.
 
 No real Telegram credentials are needed by the automated test suite. A live
 smoke test is optional and must be performed manually by the operator.
@@ -241,6 +347,8 @@ smoke test is optional and must be performed manually by the operator.
 - The first chunk reserves space for the header and separator.
 - A title/header that cannot fit is rejected before any request is made.
 - Only complete, valid UTF-8 input is accepted.
+- Docker mode additionally requires a Linux/amd64 image build for the example
+  above; build another platform directory when targeting a different platform.
 
 ## Manual Telegram smoke test
 
@@ -270,6 +378,17 @@ appear in either stream.
 - If configuration is incomplete or an explicit file is missing, inspect the
   selected path and the two environment variables; the token itself is never
   included in the error.
+- If Docker reports a missing source path during image build, ensure the build
+  context contains `linux/amd64/tgsend` and that the command uses the root
+  `Dockerfile`.
+- If the wrapper says Docker is unavailable, install Docker/Buildx or grant
+  the current user access to the Docker daemon. The wrapper has no host-binary
+  fallback.
+- If a container cannot read configuration, check that the host path is a
+  regular readable file and that the path is mounted read-only at the same
+  absolute path inside the container.
+- On Windows, use the native executable or direct Docker commands; the POSIX
+  wrapper is supported on Linux and macOS only.
 - If `--type` is not one of the four accepted names, the command exits 2 with
   `invalid_flag`.
 - If the title/header exceeds the first-chunk limit, the command exits 2 with
