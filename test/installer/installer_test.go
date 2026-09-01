@@ -559,6 +559,35 @@ func TestInstallerOutputDoesNotLeakFixtureToken(t *testing.T) {
 	}
 }
 
+func TestReadmeInstallCommandsAgainstFixture(t *testing.T) {
+	readme := string(mustRead(filepath.Join(repoRoot(t), "README.md")))
+	for _, url := range []string{
+		"https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh",
+		"https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install-wrapper.sh",
+	} {
+		if !strings.Contains(readme, url) {
+			t.Fatalf("README does not document installer URL %q", url)
+		}
+	}
+	for _, required := range []string{
+		"TGSEND_VERSION",
+		"TGSEND_INSTALL_DIR",
+		"tgsend_windows_amd64.zip",
+		"tgsend_windows_arm64.zip",
+	} {
+		if !strings.Contains(readme, required) {
+			t.Fatalf("README does not document %q", required)
+		}
+	}
+
+	for _, name := range []string{"install.sh", "install-wrapper.sh"} {
+		f := newReleaseFixture(t)
+		if out, _, err := runInstaller(t, f, name, nil); err != nil {
+			t.Fatalf("README %s install example failed against fixture: %v\n%s", name, err, out)
+		}
+	}
+}
+
 func fileMode(t *testing.T, path string) os.FileMode {
 	t.Helper()
 	info, err := os.Stat(path)

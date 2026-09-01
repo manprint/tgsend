@@ -7,9 +7,10 @@ at Telegram's UTF-16 limit, and sends the resulting chunks in order.
 
 ## Requirements
 
-- Go 1.27.0
-- Make
+- A POSIX shell, `tar`, and either `sha256sum` or `shasum` for release installers
+- Go 1.27.0 and Make when building from source
 - Docker with Buildx (only for the container and wrapper modes)
+- `curl` or `wget` when using an installer
 
 The first Go command may download modules and the Go 1.27 toolchain selected by
 the module. If Go 1.27 is not installed locally, use a Go toolchain that can
@@ -24,6 +25,64 @@ make build
 ```
 
 The executable is written to `bin/tgsend`.
+
+## Installation from a release
+
+Release binaries do not require Go. The binary installer detects Linux amd64,
+Linux arm64, Linux armv7, macOS amd64, and macOS arm64, downloads the matching
+archive and `checksums.txt` from GitHub, verifies the exact SHA-256 entry,
+validates `tgsend --version`, and replaces the destination atomically. The
+default destination is `/usr/local/bin/tgsend`.
+
+For a quick install of the latest binary:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh | sh
+```
+
+For a pinned release or a user-owned directory, set `TGSEND_VERSION` to
+`1.2.3` or `v1.2.3` and `TGSEND_INSTALL_DIR` before running the installer:
+
+```sh
+TGSEND_VERSION=v1.2.3 TGSEND_INSTALL_DIR="$HOME/.local/bin" sh install.sh
+```
+
+For a safer reviewable install, download the script, inspect it, then execute
+it with the required privilege:
+
+```sh
+curl -fsSLo /tmp/tgsend-install.sh https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh
+less /tmp/tgsend-install.sh
+sudo sh /tmp/tgsend-install.sh
+rm -f /tmp/tgsend-install.sh
+```
+
+The Docker wrapper has a separate verified installer and is supported on Linux
+and macOS only:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install-wrapper.sh | sh
+```
+
+Reviewable wrapper installation is analogous: download
+`https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install-wrapper.sh`,
+inspect it, and run `sudo sh /path/to/install-wrapper.sh`. Both installers
+accept only `latest`, `X.Y.Z`, or `vX.Y.Z`, require HTTPS outside their test
+harness, verify the complete asset before replacement, and leave an existing
+installation unchanged on failure.
+
+On Windows, download the matching `tgsend_windows_amd64.zip` or
+`tgsend_windows_arm64.zip` asset and `checksums.txt` from the same GitHub
+release. Verify the archive checksum with a trusted SHA-256 tool, extract
+`tgsend.exe`, and add its directory to `PATH`. The POSIX wrapper is not a
+Windows installer; use the native executable or Docker directly.
+
+If Go 1.27 is not installed locally, build from source in the official Go
+image, mounting only the checkout:
+
+```sh
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/src" -w /src golang:1.27 make build
+```
 
 ## Run with Docker
 
@@ -325,6 +384,49 @@ printf 'Hello' | env TGSEND_IMAGE=tgsend:local "$HOME/.local/bin/tgsend" --dry-r
   | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["ok"] and x["result"]["chunks"][0]["text"] == "Hello"'
 ```
 
+## Agentic usage
+
+`tgsend` works well as a notification step in scripts and agent-run jobs. Keep
+messages short and explicit, and use a different invocation for each lifecycle
+event:
+
+```sh
+./bin/tgsend --type INFO --title Deploy -m 'job started'
+./bin/tgsend --type INFO --title Deploy -m 'step 2 of 3 completed'
+./bin/tgsend --type INFO --title Deploy -m 'job succeeded'
+./bin/tgsend --type ERROR --title Deploy -m 'job failed; inspect the logs'
+```
+
+Validate a notification before a job performs external work:
+
+```sh
+if ! ./bin/tgsend --dry-run --type INFO --title Deploy -m 'job started' >planned.json; then
+  echo 'notification validation failed' >&2
+  exit 1
+fi
+python3 -c 'import json; x=json.load(open("planned.json")); assert x["ok"] and x["result"]["chunks"]'
+```
+
+For a real send, use the process exit code first and parse the stable JSON
+second. Success JSON is written to standard output; error JSON is written to
+standard error:
+
+```sh
+if ./bin/tgsend --type INFO -m 'job finished' >response.json 2>error.json; then
+  python3 -c 'import json; x=json.load(open("response.json")); assert x["ok"]'
+else
+  python3 -c 'import json; x=json.load(open("error.json")); print(x["error"]["kind"])' >&2
+  exit 1
+fi
+```
+
+Do not blindly repeat a progress notification after a timeout or other
+ambiguous transport failure: the remote service may have accepted it even when
+the client could not observe the response. Reconcile the job state first, then
+send a new, clearly labelled update if needed. The command itself stops at the
+first failed chunk and reports partial progress; an orchestrator should use that
+information instead of replaying every earlier progress message.
+
 ## Security
 
 Do not pass the bot token as a command-line argument. Keep the configuration
@@ -368,6 +470,21 @@ unset TGSEND_TOKEN TGSEND_CHAT_ID
 Use a test chat or channel and revoke the token if it was exposed. The command
 must produce one success JSON document on standard output; no token should
 appear in either stream.
+
+## Release assets and support
+
+Tagged releases publish native archives for Linux amd64, Linux arm64, Linux
+armv7, macOS amd64, macOS arm64, and Windows amd64/arm64. Each release also
+publishes `checksums.txt` and a Syft SBOM for every binary or archive. Verify
+the checksum before installing and retain the release version when reporting a
+problem. The container image is published as
+`ghcr.io/manprint/tgsend:<tag>` and includes the supported Linux platforms.
+
+The [GitHub Releases](https://github.com/manprint/tgsend/releases) page is the
+source for versioned binaries and their verification files. For usage problems
+or reproducible bugs, open a [GitHub issue](https://github.com/manprint/tgsend/issues)
+with the command, version, operating system, and redacted JSON error. Never
+include a bot token, chat ID, configuration file, or private message content.
 
 ## Troubleshooting
 
