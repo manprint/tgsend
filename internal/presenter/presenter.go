@@ -8,6 +8,7 @@ import (
 
 	"github.com/manprint/tgsend/internal/apperr"
 	"github.com/manprint/tgsend/internal/buildinfo"
+	"github.com/manprint/tgsend/internal/message"
 )
 
 const schemaVersion = "1"
@@ -52,12 +53,8 @@ type SendResult struct {
 	Chunks      []PreviewChunk `json:"chunks,omitempty"`
 }
 
-// Entity is the JSON-safe subset of a Telegram message entity used in previews.
-type Entity struct {
-	Type   string `json:"type"`
-	Offset int    `json:"offset"`
-	Length int    `json:"length"`
-}
+// Entity aliases the shared message entity used in previews.
+type Entity = message.Entity
 
 // PreviewChunk is one planned message in a dry-run response.
 type PreviewChunk struct {

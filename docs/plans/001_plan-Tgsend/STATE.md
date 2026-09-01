@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:20 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:25 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `1.4`
+- **ID:** `1.5`
 - **Status:** `none`
-- **Intent:** Wire the offline CLI and application service.
+- **Intent:** Update the phase-one user documentation.
 - **Phase:** 1 - Input, config, JSON, and offline CLI (`phase_02.md`)
-- **Next action:** Open sub-phase 1.4, then wire input/config flags, dry-run service behavior, validation, and CLI end-to-end coverage.
+- **Next action:** Open sub-phase 1.5, then document current CLI flags, configuration, exact input, dry-run, and limitations with executable examples.
 - **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with state update and unrelated untracked `.serena/` only | last commit `pending-1.3`
+- **Repo state:** branch `main` | working tree dirty with state update and unrelated untracked `.serena/` only | last commit `pending-1.4`
 
 ## 2. Feature context (self-contained recap)
 
@@ -64,7 +64,8 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 5 | sub-phase | 0.5 | agent-3:haiku | Added phase-0 README for build, version, help, and current no-send limitation | README.md | README commands and build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 325dc4c |
 | 6 | sub-phase | 1.1 | agent-2:sonnet | Added bounded exact input acquisition with stdin/message precedence, terminal handling, limits, UTF-8 validation, typed errors, and fuzz coverage | internal/input/source.go, internal/input/source_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 979cca9 |
 | 7 | sub-phase | 1.2 | agent-2:sonnet | Added strict TOML/environment configuration loading with path precedence, ChatID normalization, validation, and secret-safe typed errors | internal/config/config.go, internal/config/config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | f42d329 |
-| 8 | sub-phase | 1.3 | agent-3:haiku | Added stable send/dry-run JSON schemas, non-null arrays, preview entities, optional progress, and golden fixtures | internal/presenter/presenter.go, internal/presenter/presenter_test.go, internal/presenter/testdata/* | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.3 |
+| 8 | sub-phase | 1.3 | agent-3:haiku | Added stable send/dry-run JSON schemas, non-null arrays, preview entities, optional progress, and golden fixtures | internal/presenter/presenter.go, internal/presenter/presenter_test.go, internal/presenter/testdata/* | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 473b273 |
+| 9 | sub-phase | 1.4 | agent-2:sonnet | Added shared message types, UTF-16 basic planner, offline service, CLI flags, compiled input/dry-run acceptance tests, and credential-free behavior | internal/message/*, internal/app/*, internal/cli/*, internal/presenter/presenter.go, cmd/tgsend/main.go, test/e2e/input_config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.4 |
 
 ## 5. Files touched
 
@@ -99,10 +100,19 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/presenter/testdata/send_success.json | Golden real-send JSON response | 1.3 |
 | internal/presenter/testdata/send_dry_run.json | Golden dry-run JSON response | 1.3 |
 | internal/presenter/testdata/send_error.json | Golden error JSON response | 1.3 |
+| internal/message/types.go | Shared message entity and chunk types | 1.4 |
+| internal/message/basic.go | Phase-one UTF-16 bounded raw-text planner | 1.4 |
+| internal/message/basic_test.go | Planner raw-text and UTF-16 boundary tests | 1.4 |
+| internal/app/service.go | Input, planning, dry-run, and phase-one transport boundary service | 1.4 |
+| internal/app/service_test.go | Service ordering, dry-run, and network isolation tests | 1.4 |
+| internal/cli/root.go | Registered phase-one message/config/silent/dry-run/input-limit flags and runner wiring | 1.4 |
+| internal/cli/root_test.go | CLI defaults, Changed bits, and application stream/exit tests | 1.4 |
+| cmd/tgsend/main.go | Constructed production offline application service | 1.4 |
+| test/e2e/input_config_test.go | Compiled input, dry-run, JSON, conflict, empty, and limit acceptance tests | 1.4 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 1.3; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 1.4; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -112,8 +122,8 @@ none - tree consistent after sub-phase 1.3; `.serena/` remains unrelated and unt
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... including input and strict config tests | 2026-09-01 |
-| E2E | `make test-e2e` | PASS: fresh compiled binary harness and CLI acceptance tests | 2026-09-01 |
+| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, planner, service, and CLI tests | 2026-09-01 |
+| E2E | `make test-e2e` | PASS: fresh compiled binary harness and input/dry-run/JSON acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
@@ -149,7 +159,7 @@ none
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
 | 0 - Foundation and contracts | phase_01.md | `DONE` | 0.1-0.5 closed; build, test, e2e, lint, vulnerability, and README gates pass |
-| 1 - Input, config, JSON, and offline CLI | phase_02.md | `IN_PROGRESS` | 1.1-1.3 closed; next 1.4 offline CLI/application service |
+| 1 - Input, config, JSON, and offline CLI | phase_02.md | `IN_PROGRESS` | 1.1-1.4 closed; next 1.5 README documentation |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `TODO` | - |
@@ -162,19 +172,19 @@ none
 | T-CLI-01 | e2e | `DONE` | Version JSON from compiled binary |
 | T-CLI-02 | e2e | `DONE` | Textual help from compiled binary |
 | T-CLI-03 | e2e | `DONE` | Unknown flag produces one stderr JSON |
-| T-IN-01 | e2e | `TODO` | Exact whitespace/newline stdin |
-| T-IN-02 | e2e | `TODO` | Message/stdin conflict |
-| T-IN-03 | e2e | `TODO` | Empty pipe error |
-| T-IN-04 | e2e | `TODO` | Input limit rejection |
+| T-IN-01 | e2e | `DONE` | Exact whitespace/newline stdin |
+| T-IN-02 | e2e | `DONE` | Message/stdin conflict |
+| T-IN-03 | e2e | `DONE` | Empty pipe error |
+| T-IN-04 | e2e | `DONE` | Input limit rejection |
 | T-CFG-01 | e2e | `TODO` | Default HOME config |
 | T-CFG-02 | e2e | `TODO` | Explicit config selection |
 | T-CFG-03 | e2e | `TODO` | Environment-only config |
 | T-CFG-04 | e2e | `TODO` | Explicit missing config error |
 | T-CFG-05 | e2e | `TODO` | Strict TOML/redaction |
-| T-JSON-01 | e2e | `TODO` | Dry-run stdout-only JSON |
-| T-JSON-02 | e2e | `TODO` | Validation errors/exit taxonomy |
-| T-JSON-03 | e2e | `TODO` | Credential omission |
-| T-DRY-01 | e2e | `TODO` | Offline no-config dry-run |
+| T-JSON-01 | e2e | `DONE` | Dry-run stdout-only JSON |
+| T-JSON-02 | e2e | `DONE` | Validation errors/exit taxonomy |
+| T-JSON-03 | e2e | `DONE` | Credential omission |
+| T-DRY-01 | e2e | `DONE` | Offline no-config dry-run |
 | T-MSG-01 | e2e | `TODO` | Newline-preferred split |
 | T-MSG-02 | e2e | `TODO` | Astral fallback split |
 | T-MSG-03 | e2e | `TODO` | No chunk labels |

@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/manprint/tgsend/internal/app"
 	"github.com/manprint/tgsend/internal/apperr"
 	"github.com/manprint/tgsend/internal/buildinfo"
 	"github.com/manprint/tgsend/internal/presenter"
@@ -19,6 +20,12 @@ type Dependencies struct {
 	Stdout    io.Writer
 	Stderr    io.Writer
 	BuildInfo buildinfo.Info
+	App       Runner
+}
+
+// Runner is the application boundary invoked after Cobra has parsed flags.
+type Runner interface {
+	Run(context.Context, app.Options) (presenter.SendResult, error)
 }
 
 // NewRoot creates a root command without process exits or global side effects.
@@ -35,12 +42,37 @@ func NewRoot(deps Dependencies) *cobra.Command {
 	root.SetErr(deps.Stderr)
 
 	var version bool
+	var message string
+	var configPath string
+	var silent bool
+	var dryRun bool
+	var maxInputBytes int64
 	root.Flags().BoolVar(&version, "version", false, "print version information as JSON")
+	root.Flags().StringVarP(&message, "message", "m", "", "message text (mutually exclusive with stdin)")
+	root.Flags().StringVarP(&configPath, "config", "c", "", "configuration file path")
+	root.Flags().BoolVar(&silent, "silent", false, "disable Telegram notifications")
+	root.Flags().BoolVar(&dryRun, "dry-run", false, "validate and preview without credentials or network")
+	root.Flags().Int64Var(&maxInputBytes, "max-input-bytes", 1<<20, "maximum input size in bytes")
 	root.RunE = func(cmd *cobra.Command, _ []string) error {
 		if version {
 			return presenter.WriteVersion(deps.Stdout, deps.BuildInfo)
 		}
-		return cmd.Help()
+		if deps.App == nil {
+			return apperr.New(apperr.KindTransport, apperr.CodeTelegramTransport, "sending is not available in this build phase", nil)
+		}
+		result, err := deps.App.Run(cmd.Context(), app.Options{
+			Message:        message,
+			MessageSet:     cmd.Flags().Changed("message"),
+			ConfigPath:     configPath,
+			ConfigExplicit: cmd.Flags().Changed("config"),
+			Silent:         silent,
+			DryRun:         dryRun,
+			MaxInputBytes:  maxInputBytes,
+		})
+		if err != nil {
+			return err
+		}
+		return presenter.WriteSend(deps.Stdout, result)
 	}
 	return root
 }
@@ -61,7 +93,7 @@ func Execute(ctx context.Context, deps Dependencies, args []string) int {
 	root.SetArgs(args)
 	if err := root.ExecuteContext(ctx); err != nil {
 		appErr := classifyCobraError(err)
-		_ = presenter.WriteError(deps.Stderr, root.Name(), presenter.ErrorBodyFrom(appErr))
+		_ = presenter.WriteError(deps.Stderr, "send", presenter.ErrorBodyFrom(appErr))
 		return apperr.ExitCode(appErr)
 	}
 	return 0

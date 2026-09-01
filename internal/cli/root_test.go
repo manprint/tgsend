@@ -8,7 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/manprint/tgsend/internal/app"
+	"github.com/manprint/tgsend/internal/apperr"
 	"github.com/manprint/tgsend/internal/buildinfo"
+	"github.com/manprint/tgsend/internal/presenter"
 )
 
 func TestVersionEnvelope(t *testing.T) {
@@ -115,4 +118,67 @@ func TestUnknownErrorClassificationIsSafe(t *testing.T) {
 	if strings.Contains(err.Error(), token) {
 		t.Fatal("classified error exposed its cause")
 	}
+}
+
+func TestCLIFlagDefaults(t *testing.T) {
+	runner := &captureRunner{}
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, nil)
+	if code != 0 {
+		t.Fatalf("Execute() = %d, stderr = %q", code, stderr.String())
+	}
+	if runner.options.MessageSet || runner.options.ConfigExplicit || runner.options.Silent || runner.options.DryRun || runner.options.Message != "" || runner.options.ConfigPath != "" || runner.options.MaxInputBytes != 1<<20 {
+		t.Fatalf("default options = %#v", runner.options)
+	}
+}
+
+func TestCLIChangedBits(t *testing.T) {
+	runner := &captureRunner{}
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, []string{"-m", "body", "-c", "custom.toml", "--silent", "--dry-run", "--max-input-bytes", "17"})
+	if code != 0 {
+		t.Fatalf("Execute() = %d, stderr = %q", code, stderr.String())
+	}
+	want := app.Options{Message: "body", MessageSet: true, ConfigPath: "custom.toml", ConfigExplicit: true, Silent: true, DryRun: true, MaxInputBytes: 17}
+	if runner.options != want {
+		t.Fatalf("options = %#v, want %#v", runner.options, want)
+	}
+}
+
+func TestAppErrorsReachCorrectStreamAndExit(t *testing.T) {
+	const token = "123456:secret-token"
+	runner := &captureRunner{err: apperr.New(apperr.KindInput, apperr.CodeInputEmpty, "input is empty", errors.New(token))}
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, nil)
+	if code != 4 || stdout.Len() != 0 || bytes.Count(stderr.Bytes(), []byte("\n")) != 1 {
+		t.Fatalf("code/stdout/stderr = %d/%q/%q", code, stdout.String(), stderr.String())
+	}
+	if strings.Contains(stderr.String(), token) {
+		t.Fatal("application cause reached stderr")
+	}
+	var envelope struct {
+		Command string `json:"command"`
+		Error   struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(stderr.Bytes(), &envelope); err != nil {
+		t.Fatalf("stderr is not JSON: %v", err)
+	}
+	if envelope.Command != "send" || envelope.Error.Code != "input_empty" {
+		t.Fatalf("error envelope = %#v", envelope)
+	}
+}
+
+type captureRunner struct {
+	options app.Options
+	err     error
+}
+
+func (runner *captureRunner) Run(_ context.Context, options app.Options) (presenter.SendResult, error) {
+	runner.options = options
+	if runner.err != nil {
+		return presenter.SendResult{}, runner.err
+	}
+	return presenter.SendResult{DryRun: options.DryRun, ChunksTotal: 1, MessageIDs: []int64{}}, nil
 }
