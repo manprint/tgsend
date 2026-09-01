@@ -1,27 +1,22 @@
 # tgsend
 
-## Overview
-
-`tgsend` is a command-line tool for sending messages to Telegram. This phase
-ships exact UTF-8 input handling, strict configuration validation, stable JSON
-responses, and an offline dry-run preview with optional formatting and
-deterministic chunking.
-
-Live sending is not shipped yet; dry-run remains the credential-free way to
-validate a message and inspect every chunk.
+`tgsend` is a command-line tool that sends exact UTF-8 messages to a Telegram
+chat or channel. It reads a message from `--message` or standard input, checks
+the complete message locally, formats it when requested, splits long messages
+at Telegram's UTF-16 limit, and sends the resulting chunks in order.
 
 ## Requirements
 
 - Go 1.27.0
 - Make
 
-The first build may download the pinned Go modules and the Go toolchain
-required by the local Go installation. Docker is an optional fallback when a
-local Go 1.27 toolchain is unavailable.
+The first Go command may download modules and the Go 1.27 toolchain selected by
+the module. If Go 1.27 is not installed locally, use a Go toolchain that can
+download it automatically or run the build in a Go 1.27 Docker image.
 
-## Build from source
+## Installation from source
 
-From the repository root, run:
+From the repository root:
 
 ```sh
 make build
@@ -35,10 +30,70 @@ The executable is written to `bin/tgsend`.
 ./bin/tgsend [flags]
 ```
 
-Input can come from `-m, --message` or piped standard input. The two sources
-are mutually exclusive; input whitespace and newlines are preserved exactly.
+Input can come from `-m, --message` or piped standard input. The sources are
+mutually exclusive, and input whitespace and line endings are preserved.
 
-Available flags:
+The seven basic workflows are:
+
+1. Use the default `$HOME/.tgsend` configuration with standard input:
+
+   ```sh
+   printf 'Hello\n' | ./bin/tgsend
+   ```
+
+2. Select a configuration file explicitly:
+
+   ```sh
+   printf 'Hello\n' | ./bin/tgsend --config /path/to/tgsend.toml
+   ```
+
+3. Send a log file:
+
+   ```sh
+   cat log.txt | ./bin/tgsend
+   ```
+
+4. Send a message supplied as a flag:
+
+   ```sh
+   ./bin/tgsend --config /path/to/tgsend.toml --message 'Hello'
+   ```
+
+5. Send message body chunks as preformatted monospace text:
+
+   ```sh
+   ./bin/tgsend --config /path/to/tgsend.toml --message 'Hello' --monospace
+   ```
+
+6. Add a severity type (`INFO`, `WARNING`, `ERROR`, or `CRITICAL`):
+
+   ```sh
+   printf 'Hello\n' | ./bin/tgsend --config /path/to/tgsend.toml --type WARNING
+   ```
+
+7. Add a bold title:
+
+   ```sh
+   printf 'Hello\n' | ./bin/tgsend --title 'My message title'
+   ```
+
+Disable Telegram notifications with `--silent`:
+
+```sh
+./bin/tgsend --config /path/to/tgsend.toml --message 'Quiet update' --silent
+```
+
+Validate input and inspect the exact planned chunks without reading
+configuration or contacting Telegram with `--dry-run`:
+
+```sh
+./bin/tgsend --dry-run --type INFO --title 'Planned update' --monospace -m 'Hello'
+```
+
+Use `--version` for machine-readable build metadata and `--help` for the full
+flag list.
+
+## Flags
 
 ```text
   -c, --config string         configuration file path
@@ -47,42 +102,11 @@ Available flags:
       --max-input-bytes int   maximum input size in bytes (default 1048576)
   -m, --message string        message text (mutually exclusive with stdin)
       --monospace             format each body chunk as preformatted text
-      --title string          optional bold title
-      --type string            optional type: INFO, WARNING, ERROR, CRITICAL
       --silent                disable Telegram notifications
+      --title string           optional bold title
+      --type string            optional type: INFO, WARNING, ERROR, or CRITICAL
       --version               print version information as JSON
 ```
-
-Examples:
-
-```sh
-./bin/tgsend --dry-run -m 'Hello from tgsend'
-./bin/tgsend --dry-run --type WARNING --title 'Deploy' --monospace \
-  -m 'Release started: check the canary before promoting.'
-printf 'first line\r\nsecond line\n' | ./bin/tgsend --dry-run
-```
-
-## Formatting
-
-`--type` is case-insensitive and accepts exactly `INFO`, `WARNING`, `ERROR`,
-or `CRITICAL`. The type is normalized to uppercase and displayed with its
-fixed icon: `ℹ️`, `⚠️`, `❌`, or `🚨`, respectively. A title, when supplied,
-is displayed on the next line in bold. The type and title header is followed
-by one blank line before the body.
-
-The header appears only in the first chunk. A title creates a `bold` entity;
-`--monospace` creates a `pre` entity covering the body of each chunk. Chunk
-labels or counters are never added, and the body text is otherwise preserved
-exactly, including whitespace and line endings.
-
-## Long messages
-
-Messages are split into ordered chunks of at most 4096 UTF-16 code units, the
-Telegram text limit. The first chunk includes the optional header and reserves
-space for it; later chunks can use the full limit. When possible, a chunk ends
-at the last complete newline that fits. No text is trimmed, reordered, or
-annotated, and concatenating the body portions reconstructs the original body
-byte-for-byte.
 
 ## Configuration
 
@@ -94,9 +118,9 @@ chat_id = "@example_channel"
 ```
 
 The default path is `$HOME/.tgsend`; `--config PATH` selects an explicit file.
-An explicitly selected file must exist and be readable. Unknown TOML keys and
-wrong value types are rejected. `chat_id` accepts a nonzero signed decimal
-integer fitting `int64`, or `@` followed by ASCII letters, digits, or `_`.
+An explicit file must exist and be readable. Unknown TOML keys and wrong value
+types are rejected. `chat_id` accepts a nonzero signed decimal integer fitting
+`int64`, or `@` followed by ASCII letters, digits, or `_`.
 
 ## Environment
 
@@ -105,61 +129,58 @@ independently when non-empty. If the default file is absent, both variables can
 provide the complete configuration. Empty variables do not override a file
 value.
 
-The dry-run path intentionally does not read configuration, credentials, or
-the network.
+Keep credentials in the environment or configuration file, never in command
+arguments. A configuration file should be readable only by its owner:
+
+```sh
+chmod 600 "$HOME/.tgsend"
+```
+
+## Formatting
+
+`--type` is case-insensitive and accepts exactly `INFO`, `WARNING`, `ERROR`, or
+`CRITICAL`. The normalized header uses the fixed icons `ℹ️`, `⚠️`, `❌`, and
+`🚨`. A title is placed on the next line in bold, followed by one blank line.
+The header appears only in the first chunk.
+
+`--monospace` adds a `pre` entity covering only the body of every chunk. Title
+and body entity offsets and lengths are UTF-16 code units, as required by
+Telegram. No chunk labels or counters are added.
+
+## Long messages
+
+Messages are split into ordered chunks of at most 4096 UTF-16 code units. The
+first chunk reserves space for its optional header; later chunks can use the
+full limit. When possible, a chunk ends after the last complete newline that
+fits. No text is trimmed, reordered, or annotated, and concatenating the body
+portions reconstructs the original input byte-for-byte.
 
 ## JSON output
 
-`--version` and `--dry-run` write exactly one JSON document followed by a
-newline to standard output. Errors write exactly one JSON document to standard
-error; standard output remains empty.
+Every successful send, dry-run, version response, and error is exactly one JSON
+document followed by a newline. Successful output goes to standard output;
+errors go to standard error and standard output remains empty.
 
-Version response:
+Successful send:
 
 ```json
-{"schema_version":"1","ok":true,"command":"version","result":{"version":"dev","commit":"none","date":"unknown"}}
+{"schema_version":"1","ok":true,"command":"send","result":{"dry_run":false,"chunks_total":1,"chunks_sent":1,"message_ids":[42]}}
 ```
 
-Dry-run response:
+Dry-run preview:
 
 ```json
 {"schema_version":"1","ok":true,"command":"send","result":{"dry_run":true,"chunks_total":1,"chunks_sent":0,"message_ids":[],"chunks":[{"index":1,"text":"Hello","entities":[],"disable_notification":false}]}}
 ```
 
-Representative validation error:
+Partial failure:
 
 ```json
-{"schema_version":"1","ok":false,"command":"send","error":{"code":"input_empty","message":"input is empty","retryable":false}}
+{"schema_version":"1","ok":false,"command":"send","error":{"code":"telegram_rejected","message":"Telegram API rejected request (code 400)","retryable":false,"progress":{"chunks_total":2,"chunks_sent":1,"failed_chunk":2}}}
 ```
 
-Responses never include tokens or chat IDs.
-
-## Dry run
-
-Dry-run validates the selected input and previews the raw message without
-requiring a config file, credentials, or network access. It accepts one raw
-message up to the 1 MiB input byte cap, plans all formatted chunks, and returns
-their exact text and entities arrays. The `--silent` flag is reflected in
-`disable_notification`. Each chunk contains `index`, `text`, `entities`, and
-`disable_notification`; entity objects contain `type`, `offset`, and `length`
-in UTF-16 code units (and `language` when present).
-
-Example preview for a formatted message (the token and chat ID are not needed
-for dry-run and never appear in its output):
-
-```json
-{"schema_version":"1","ok":true,"command":"send","result":{"dry_run":true,"chunks_total":1,"chunks_sent":0,"message_ids":[],"chunks":[{"index":1,"text":"⚠️ WARNING\nDeploy\n\nRelease started","entities":[{"type":"bold","offset":11,"length":6},{"type":"pre","offset":19,"length":15}],"disable_notification":false}]}}
-```
-
-To validate the examples with an isolated home directory and a JSON parser:
-
-```sh
-tmp_home=$(mktemp -d)
-trap 'rm -rf "$tmp_home"' EXIT
-HOME="$tmp_home" ./bin/tgsend --dry-run -m 'Hello' | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["ok"] and x["result"]["chunks"][0]["text"] == "Hello"'
-HOME="$tmp_home" ./bin/tgsend --dry-run --type WARNING --title Deploy --monospace -m 'Release started' | python3 -c 'import json,sys; x=json.load(sys.stdin); c=x["result"]["chunks"][0]; assert c["text"] == "⚠️ WARNING\nDeploy\n\nRelease started" and [e["type"] for e in c["entities"]] == ["bold","pre"]'
-printf 'first line\r\nsecond line\n' | HOME="$tmp_home" ./bin/tgsend --dry-run | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["result"]["chunks"][0]["text"] == "first line\r\nsecond line\n"'
-```
+`--version` returns `version`, `commit`, and `date`. Responses never include
+the bot token or chat ID, and successful sends do not echo message bodies.
 
 ## Exit codes
 
@@ -167,29 +188,93 @@ printf 'first line\r\nsecond line\n' | HOME="$tmp_home" ./bin/tgsend --dry-run |
 - `2` — usage or command-line argument error
 - `3` — configuration error
 - `4` — input error
-- `5` — Telegram API rejection or protocol error
-- `6` — transport unavailable or failed
-- `7` — Telegram rate limit
+- `5` — Telegram API rejection
+- `6` — transport or Telegram protocol failure
+- `7` — Telegram rate limit after the retry policy is exhausted
+
+## Retries and failures
+
+The sender performs one request at a time and stops at the first failed chunk.
+Each HTTP attempt has a 10-second timeout. Only an explicit HTTP 429 or a
+Telegram response with `error_code: 429` and a positive `retry_after` is
+retried. There are at most two retries after the initial request, and the
+cumulative requested wait is limited to 60 seconds.
+
+Transport errors, timeouts, HTTP 5xx responses, malformed responses, and other
+Telegram API errors are not retried because the outcome is not safely known.
+When a chunk fails, the error JSON reports the total planned chunks, completed
+chunks, and one-based failed chunk; later chunks are not sent.
+
+## Dry run
+
+`--dry-run` validates the selected input, plans every formatted chunk, and
+returns exact text and entities. It does not require a configuration file,
+credentials, or network access. The input byte limit is still enforced.
+
+For an isolated local check:
+
+```sh
+tmp_home=$(mktemp -d)
+trap 'rm -rf "$tmp_home"' EXIT
+HOME="$tmp_home" ./bin/tgsend --dry-run -m 'Hello' \
+  | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["ok"] and x["result"]["chunks"][0]["text"] == "Hello"'
+HOME="$tmp_home" ./bin/tgsend --dry-run --type WARNING --title Deploy --monospace -m 'Release started' \
+  | python3 -c 'import json,sys; x=json.load(sys.stdin); c=x["result"]["chunks"][0]; assert c["text"] == "⚠️ WARNING\nDeploy\n\nRelease started" and [e["type"] for e in c["entities"]] == ["bold","pre"]'
+printf 'first line\r\nsecond line\n' | HOME="$tmp_home" ./bin/tgsend --dry-run \
+  | python3 -c 'import json,sys; x=json.load(sys.stdin); assert x["result"]["chunks"][0]["text"] == "first line\r\nsecond line\n"'
+```
+
+## Security
+
+Do not pass the bot token as a command-line argument. Keep the configuration
+file private, avoid shell tracing while credentials are set, and do not paste
+credentials into issue reports or logs. `tgsend` does not print credentials or
+chat IDs in JSON responses and never sends a dry-run request.
+
+No real Telegram credentials are needed by the automated test suite. A live
+smoke test is optional and must be performed manually by the operator.
 
 ## Limits
 
 - Input is limited to 1 MiB by default; change it with `--max-input-bytes`.
-- Every output chunk is limited to 4096 UTF-16 code units, including its
-  formatting entities.
-- The first chunk reserves space for its header and separator; a title that
-  would make the header exceed the safe limit is rejected.
-- Live sending and Telegram request retries are not available in this phase.
+- Every sent chunk is limited to 4096 UTF-16 code units, including its header.
+- The first chunk reserves space for the header and separator.
+- A title/header that cannot fit is rejected before any request is made.
+- Only complete, valid UTF-8 input is accepted.
+
+## Manual Telegram smoke test
+
+Build the binary, set credentials only in the current shell without printing
+them, run a dry-run first, then send a short message. Do not use this procedure
+in CI:
+
+```sh
+read -r -s -p 'Telegram bot token: ' TGSEND_TOKEN; printf '\n'
+read -r -p 'Telegram chat ID: ' TGSEND_CHAT_ID
+export TGSEND_TOKEN TGSEND_CHAT_ID
+./bin/tgsend --dry-run -m 'tgsend smoke test'
+./bin/tgsend -m 'tgsend smoke test'
+unset TGSEND_TOKEN TGSEND_CHAT_ID
+```
+
+Use a test chat or channel and revoke the token if it was exposed. The command
+must produce one success JSON document on standard output; no token should
+appear in either stream.
 
 ## Troubleshooting
 
-- Use `--help` to check the exact flags and defaults.
-- If standard input is a terminal and `-m` is not supplied, provide a message
-  with `-m` or pipe input into the command.
-- If both `-m` and non-empty standard input are supplied, the command exits
-  with code `2` and reports `conflicting_input`.
-- If `--type` is not one of the four accepted names, the command exits with
-  code `2` and reports `invalid_flag`.
-- If the title plus its header exceeds the first-chunk limit, the command
-  exits with code `2` and reports `title_too_long`.
-- For offline checks, always use `--dry-run`; it does not inspect
-  `$HOME/.tgsend`, `--config`, or environment credentials.
+- If standard input is a terminal and `--message` is not supplied, provide a
+  message with `-m` or pipe input into the command.
+- If `-m` and non-empty standard input are both supplied, the command exits 2
+  with `conflicting_input`.
+- If configuration is incomplete or an explicit file is missing, inspect the
+  selected path and the two environment variables; the token itself is never
+  included in the error.
+- If `--type` is not one of the four accepted names, the command exits 2 with
+  `invalid_flag`.
+- If the title/header exceeds the first-chunk limit, the command exits 2 with
+  `title_too_long`.
+- For offline validation, use `--dry-run`; it does not inspect the config file
+  or credentials.
+- For an HTTP 429, inspect the final `telegram_rate_limited` error and its
+  retryable status. Other failures are intentionally not retried.
