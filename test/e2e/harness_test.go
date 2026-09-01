@@ -8,6 +8,8 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -25,19 +27,46 @@ type processResult struct {
 
 func run(t *testing.T, args []string, stdin []byte, overrides map[string]string, timeout time.Duration) processResult {
 	t.Helper()
+	return runWithHome(t, args, stdin, overrides, t.TempDir(), timeout)
+}
+
+func runWithHome(t *testing.T, args []string, stdin []byte, overrides map[string]string, home string, timeout time.Duration) processResult {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	env := []string{
-		"HOME=" + t.TempDir(),
-		"PATH=" + os.Getenv("PATH"),
-		"LC_ALL=C",
-		"LANG=C",
+	env := isolatedEnvironment(home, overrides)
+	return runCommand(ctx, binaryPath, args, stdin, env)
+}
+
+func isolatedEnvironment(home string, overrides map[string]string) []string {
+	values := map[string]string{
+		"HOME":   home,
+		"PATH":   os.Getenv("PATH"),
+		"LC_ALL": "C",
+		"LANG":   "C",
+	}
+	if runtime.GOOS == "windows" {
+		values["USERPROFILE"] = home
+		for _, key := range []string{"SYSTEMROOT", "WINDIR", "PATHEXT"} {
+			if value, ok := os.LookupEnv(key); ok {
+				values[key] = value
+			}
+		}
 	}
 	for key, value := range overrides {
-		env = append(env, key+"="+value)
+		values[key] = value
 	}
-	return runCommand(ctx, binaryPath, args, stdin, env)
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	env := make([]string, 0, len(keys))
+	for _, key := range keys {
+		env = append(env, key+"="+values[key])
+	}
+	return env
 }
 
 func runCommand(ctx context.Context, path string, args []string, stdin []byte, env []string) processResult {
@@ -87,16 +116,24 @@ func TestDecodeOneJSONRequiresTrailingNewline(t *testing.T) {
 }
 
 func TestExitCodeExtraction(t *testing.T) {
-	result := runCommand(context.Background(), "sh", []string{"-c", "exit 7"}, nil, []string{"PATH=" + os.Getenv("PATH")})
+	path, args := "sh", []string{"-c", "exit 7"}
+	if runtime.GOOS == "windows" {
+		path, args = "cmd", []string{"/C", "exit 7"}
+	}
+	result := runCommand(context.Background(), path, args, nil, []string{"PATH=" + os.Getenv("PATH")})
 	if result.ExitCode != 7 {
 		t.Fatalf("exit code = %d, want 7", result.ExitCode)
 	}
 }
 
 func TestDeadlineCancellation(t *testing.T) {
+	t.Setenv("TGSEND_E2E_HELPER", "1")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
-	result := runCommand(ctx, "sh", []string{"-c", "sleep 1"}, nil, []string{"PATH=" + os.Getenv("PATH")})
+	result := runCommand(ctx, os.Args[0], []string{"-test.run=TestE2EHelperProcess", "--"}, nil, []string{
+		"PATH=" + os.Getenv("PATH"),
+		"TGSEND_E2E_HELPER=1",
+	})
 	if !result.TimedOut {
 		t.Fatalf("TimedOut = false, result: %+v", result)
 	}
@@ -105,5 +142,24 @@ func TestDeadlineCancellation(t *testing.T) {
 	}
 	if strings.Contains(string(result.Stderr), "secret") {
 		t.Fatal("timeout output unexpectedly contains secret text")
+	}
+}
+
+func TestE2EHelperProcess(t *testing.T) {
+	if os.Getenv("TGSEND_E2E_HELPER") != "1" {
+		return
+	}
+	time.Sleep(time.Second)
+}
+
+func TestRunCommandReplacesEnvironment(t *testing.T) {
+	t.Setenv("TGSEND_ENV_SENTINEL", "must-not-inherit")
+	path, args := "sh", []string{"-c", "test -z \"$TGSEND_ENV_SENTINEL\""}
+	if runtime.GOOS == "windows" {
+		path, args = "cmd", []string{"/C", "if defined TGSEND_ENV_SENTINEL exit /b 1"}
+	}
+	result := runCommand(context.Background(), path, args, nil, []string{"PATH=" + os.Getenv("PATH")})
+	if result.ExitCode != 0 {
+		t.Fatalf("environment replacement exit code = %d, stderr = %q", result.ExitCode, result.Stderr)
 	}
 }

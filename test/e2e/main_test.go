@@ -32,7 +32,11 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(buildDir)
 
-	binaryPath = filepath.Join(buildDir, "tgsend")
+	executableName := "tgsend"
+	if runtime.GOOS == "windows" {
+		executableName += ".exe"
+	}
+	binaryPath = filepath.Join(buildDir, executableName)
 	build := exec.Command("go", "build", "-ldflags", "-X github.com/manprint/tgsend/internal/buildinfo.TestEndpointEnabled=true", "-o", binaryPath, "./cmd/tgsend")
 	build.Dir = repoRoot
 	build.Env = buildEnvironment(filepath.Join(buildDir, "home"))
@@ -49,7 +53,10 @@ func TestMain(m *testing.M) {
 
 func buildEnvironment(home string) []string {
 	env := []string{"HOME=" + home, "GO111MODULE=on"}
-	for _, key := range []string{"PATH", "GOPATH", "GOMODCACHE", "GOCACHE", "GOTOOLCHAIN", "GOENV", "TMPDIR"} {
+	if runtime.GOOS == "windows" {
+		env = append(env, "USERPROFILE="+home)
+	}
+	for _, key := range []string{"PATH", "SYSTEMROOT", "WINDIR", "PATHEXT", "GOPATH", "GOMODCACHE", "GOCACHE", "GOTOOLCHAIN", "GOENV", "TMPDIR"} {
 		if value, ok := os.LookupEnv(key); ok && value != "" {
 			env = append(env, key+"="+value)
 		}

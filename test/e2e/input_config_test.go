@@ -30,6 +30,9 @@ func TestInputExactWhitespaceAndNewline(t *testing.T) {
 	if len(envelope.Result.Chunks) != 1 || envelope.Result.Chunks[0].Text != "  first\r\nsecond\n" {
 		t.Fatalf("preview chunks = %#v", envelope.Result.Chunks)
 	}
+	if bytes.Count(result.Stdout, []byte("\n")) != 1 {
+		t.Fatalf("dry-run JSON cardinality = %q", result.Stdout)
+	}
 }
 
 func TestInputMessageStdinConflict(t *testing.T) {

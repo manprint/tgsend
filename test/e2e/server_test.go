@@ -3,6 +3,7 @@
 package e2e
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -81,9 +82,47 @@ func (fake *fakeTelegramServer) URL() string {
 func (fake *fakeTelegramServer) Requests() ([]telegramRequest, []string) {
 	fake.mu.Lock()
 	defer fake.mu.Unlock()
-	requests := append([]telegramRequest(nil), fake.requests...)
+	requests := make([]telegramRequest, len(fake.requests))
+	for index, request := range fake.requests {
+		requests[index] = request
+		requests[index].Entities = append([]telegramEntity(nil), request.Entities...)
+	}
 	paths := append([]string(nil), fake.paths...)
 	return requests, paths
+}
+
+func TestScriptedTelegramServerExhaustionAndDeepCopy(t *testing.T) {
+	fake := newFakeTelegramServer(t, telegramSuccess(1))
+	body := []byte(`{"chat_id":"-100","text":"one","entities":[{"type":"pre","offset":0,"length":3}]}`)
+	response, err := http.Post(fake.URL()+"/bot/test/sendMessage", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("first request: %v", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		response.Body.Close()
+		t.Fatalf("first status = %d, want %d", response.StatusCode, http.StatusOK)
+	}
+	response.Body.Close()
+	response, err = http.Post(fake.URL()+"/bot/test/sendMessage", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("exhausted request: %v", err)
+	}
+	if response.StatusCode != http.StatusInternalServerError {
+		response.Body.Close()
+		t.Fatalf("exhausted status = %d, want %d", response.StatusCode, http.StatusInternalServerError)
+	}
+	response.Body.Close()
+
+	requests, _ := fake.Requests()
+	if len(requests) != 2 || len(requests[0].Entities) != 1 {
+		t.Fatalf("recorded requests = %#v", requests)
+	}
+	requests[0].Text = "mutated"
+	requests[0].Entities[0].Type = "mutated"
+	again, _ := fake.Requests()
+	if again[0].Text != "one" || again[0].Entities[0].Type != "pre" {
+		t.Fatalf("request snapshot was not deep copied: %#v", again[0])
+	}
 }
 
 func telegramSuccess(messageID int64) scriptedTelegramResponse {

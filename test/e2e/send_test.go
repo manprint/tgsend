@@ -92,6 +92,47 @@ func TestTelegramSendStopsWithPartialProgress(t *testing.T) {
 	}
 }
 
+func TestTE2E09TelegramSendReportsEveryFailurePosition(t *testing.T) {
+	cases := []struct {
+		name       string
+		responses  []scriptedTelegramResponse
+		wantSent   int
+		wantFailed int
+		wantCalls  int
+	}{
+		{name: "first", responses: []scriptedTelegramResponse{telegramRejection(400)}, wantSent: 0, wantFailed: 1, wantCalls: 1},
+		{name: "middle", responses: []scriptedTelegramResponse{telegramSuccess(901), telegramRejection(400)}, wantSent: 1, wantFailed: 2, wantCalls: 2},
+		{name: "final", responses: []scriptedTelegramResponse{telegramSuccess(901), telegramSuccess(902), telegramRejection(400)}, wantSent: 2, wantFailed: 3, wantCalls: 3},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			fake := newFakeTelegramServer(t, testCase.responses...)
+			result := run(t, []string{"-m", strings.Repeat("x", 9000)}, nil, sendEnvironment(fake), 5*time.Second)
+			assertE2EError(t, result, 5, "telegram_rejected")
+			var envelope struct {
+				Error struct {
+					Progress struct {
+						ChunksTotal int `json:"chunks_total"`
+						ChunksSent  int `json:"chunks_sent"`
+						FailedChunk int `json:"failed_chunk"`
+					} `json:"progress"`
+				} `json:"error"`
+			}
+			if err := testutil.DecodeOneJSON(result.Stderr, &envelope); err != nil {
+				t.Fatalf("decode failure progress: %v", err)
+			}
+			progress := envelope.Error.Progress
+			if progress.ChunksTotal != 3 || progress.ChunksSent != testCase.wantSent || progress.FailedChunk != testCase.wantFailed {
+				t.Fatalf("progress = %#v", progress)
+			}
+			requests, _ := fake.Requests()
+			if len(requests) != testCase.wantCalls {
+				t.Fatalf("requests = %d, want %d", len(requests), testCase.wantCalls)
+			}
+		})
+	}
+}
+
 func TestReferenceScenarioSendsExactUnicodePlan(t *testing.T) {
 	fake := newFakeTelegramServer(t, telegramSuccess(701), telegramSuccess(702))
 	body := strings.Repeat("🚀", 2500)

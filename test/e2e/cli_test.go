@@ -52,6 +52,25 @@ func TestHelpFromCompiledBinary(t *testing.T) {
 	}
 }
 
+func TestTE2E10VersionAndHelpBypassInputConfigAndNetwork(t *testing.T) {
+	const token = "123:version-help-sentinel"
+	for _, args := range [][]string{{"--version"}, {"--help"}} {
+		name := args[0]
+		t.Run(name, func(t *testing.T) {
+			result := run(t, args, nil, map[string]string{
+				"TGSEND_API_BASE_URL": "https://external.invalid",
+				"TGSEND_TOKEN":        token,
+			}, 5*time.Second)
+			if result.ExitCode != 0 || len(result.Stderr) != 0 || bytes.Contains(result.Stdout, []byte(token)) {
+				t.Fatalf("%s result = exit %d/stdout %q/stderr %q", name, result.ExitCode, result.Stdout, result.Stderr)
+			}
+			if name == "--help" && !strings.Contains(string(result.Stdout), "Usage:") {
+				t.Fatalf("help output = %q", result.Stdout)
+			}
+		})
+	}
+}
+
 func TestUnknownFlagIsSingleJSONErrorFromCompiledBinary(t *testing.T) {
 	const token = "123456:secret-token"
 	result := run(t, []string{"--unknown"}, nil, map[string]string{"TGSEND_TOKEN": token}, 5*time.Second)
