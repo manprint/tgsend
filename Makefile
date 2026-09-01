@@ -2,6 +2,7 @@ SHELL := /bin/sh
 
 GOLANGCI_LINT_VERSION := v2.13.2
 GOVULNCHECK_VERSION := v1.1.4
+VULN_GO_VERSION := go1.26.6
 
 .PHONY: build fmt fmt-check lint test test-e2e vuln verify
 
@@ -26,6 +27,6 @@ test-e2e:
 	go test -tags=e2e ./...
 
 vuln:
-	project_dir=$$(mktemp -d); mkdir -p $$project_dir/project; tar --exclude='./.git' --exclude='./.serena' --exclude='./.tokensave' --exclude='./.tgsend' --exclude='./docs' --exclude='./bin' --exclude='./dist' --exclude='./coverage.out' -cf - . | tar -C $$project_dir/project -xf -; sed -i 's/^go 1\.27\.0$$/go 1.26.1/' $$project_dir/project/go.mod; tool_dir=$$(mktemp -d); GOBIN=$$tool_dir GOTOOLCHAIN=local go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); (cd $$project_dir/project && GOTOOLCHAIN=local $$tool_dir/govulncheck ./...)
+	project_dir=$$(mktemp -d); mkdir -p $$project_dir/project; tar --exclude='./.git' --exclude='./.serena' --exclude='./.tokensave' --exclude='./.tgsend' --exclude='./docs' --exclude='./bin' --exclude='./dist' --exclude='./coverage.out' -cf - . | tar -C $$project_dir/project -xf -; sed -i 's/^go 1\.27\.0$$/go 1.26.6/' $$project_dir/project/go.mod; tool_dir=$$(mktemp -d); GOBIN=$$tool_dir GOTOOLCHAIN=$(VULN_GO_VERSION) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); (cd $$project_dir/project && GOTOOLCHAIN=$(VULN_GO_VERSION) $$tool_dir/govulncheck ./...)
 
 verify: build fmt-check lint test test-e2e vuln
