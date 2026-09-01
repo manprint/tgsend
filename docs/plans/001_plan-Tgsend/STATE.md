@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:56 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 01:12 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `2.2`
+- **ID:** `2.3`
 - **Status:** `none`
-- **Intent:** Implement deterministic newline-preferred body splitting.
+- **Intent:** Implement the final planner, formatting options, and CLI integration.
 - **Phase:** 2 - Message composition and chunking (`phase_03.md`)
-- **Next action:** Open sub-phase 2.2, then implement bounded newline-preferred splitting and reconstruction/invariant tests.
+- **Next action:** Open sub-phase 2.3, then implement title/type/monospace composition, entities, planner integration, and acceptance tests.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `b85a3c3`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` only | last implementation commit `pending-2.2`
 
 ## 2. Feature context (self-contained recap)
 
@@ -68,6 +68,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 9 | sub-phase | 1.4 | agent-2:sonnet | Added shared message types, UTF-16 basic planner, offline service, CLI flags, compiled input/dry-run acceptance tests, and credential-free behavior | internal/message/*, internal/app/*, internal/cli/*, internal/presenter/presenter.go, cmd/tgsend/main.go, test/e2e/input_config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 5d35466 |
 | 10 | sub-phase | 1.5 | agent-3:haiku | Updated README with phase-one usage, configuration, environment, JSON, dry-run, limits, exit codes, troubleshooting, and verified examples | README.md | README examples in isolated HOME plus build, fmt-check, lint, test, test-e2e, vuln, verify all pass | aec27ac |
 | 11 | sub-phase | 2.1 | agent-2:sonnet | Added checked UTF-16 length, prefix, and byte-offset primitives with invalid UTF-8 and fuzz coverage | internal/message/utf16.go, internal/message/utf16_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | b85a3c3 |
+| 12 | sub-phase | 2.2 | agent-2:sonnet | Added deterministic UTF-16-bounded body splitting with newline preference, CRLF preservation, progress checks, reconstruction tests, and fuzz coverage | internal/message/split.go, internal/message/split_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, fuzz all pass | pending-2.2 |
 
 ## 5. Files touched
 
@@ -114,10 +115,12 @@ These commands are authoritative and must remain identical to overview/phase gat
 | README.md | Phase-one user guide for usage, configuration, JSON, dry-run, limits, exit codes, and troubleshooting | 1.5 |
 | internal/message/utf16.go | Checked UTF-16 code-unit length, prefix, offset, and addition primitives | 2.1 |
 | internal/message/utf16_test.go | UTF-16 table, boundary, invalid-input, overflow, and fuzz tests | 2.1 |
+| internal/message/split.go | Deterministic newline-preferred UTF-16-bounded body splitter | 2.2 |
+| internal/message/split_test.go | Split boundary, Unicode, reconstruction, bounds, and fuzz tests | 2.2 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 2.1; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 2.2; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -127,12 +130,12 @@ none - tree consistent after sub-phase 2.1; `.serena/` remains unrelated and unt
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, planner, service, CLI, and UTF-16 primitive tests | 2026-09-01 |
+| Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, planner, service, CLI, UTF-16 primitives, and splitter tests | 2026-09-01 |
 | E2E | `make test-e2e` | PASS: fresh compiled binary harness and input/dry-run/JSON acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; UTF-16 fuzz target also passed 3s | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, and vulnerability gates; UTF-16 and splitter fuzz targets passed 3s | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
