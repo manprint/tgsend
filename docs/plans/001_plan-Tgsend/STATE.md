@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:30 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 01:32 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -27,9 +27,9 @@ This is the only execution-state file. Position, progress, ledger, verification,
 - **Status:** `none`
 - **Intent:** Harden compiled process coverage and cover every documented native behavior before packaging.
 - **Phase:** 4 - Binary e2e, image, and Docker wrapper (`phase_05.md`)
-- **Next action:** Read sub-phase 4.1 requirements, open the unit, then extend the black-box e2e matrix for all config, flag, exit, whitespace, and failure-position combinations.
+- **Next action:** Open sub-phase 4.2, then add the minimal production image and run the Docker smoke target.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `ae6cc9b`
+- **Repo state:** branch `main` | working tree dirty with unrelated untracked `.serena/` | last implementation commit `77e1e96`
 
 ## 2. Feature context (self-contained recap)
 
@@ -75,6 +75,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 16 | sub-phase | 3.2 | agent-2:sonnet | Added bounded explicit-429 retry policy with production context-aware sleeper, overflow/budget checks, and exhaustive no-retry/attempt-count tests | internal/telegram/retry.go, internal/telegram/retry_test.go, internal/telegram/client.go, internal/telegram/client_test.go | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; retry policy tests pass | 107c438 |
 | 17 | sub-phase | 3.3 | agent-2:sonnet | Replaced the offline no-send branch with configuration-aware serial native sends, ordered message IDs, exact partial progress, a 10-second production HTTP client, loopback-only e2e endpoint controls, and the reference Unicode process test | internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/buildinfo/buildinfo.go, cmd/tgsend/main.go, cmd/tgsend/main_test.go, internal/telegram/retry.go, test/e2e/main_test.go, test/e2e/server_test.go, test/e2e/send_test.go | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; T-TG-07..09 and T-E2E-08 pass | 5bbbe13 |
 | 18 | sub-phase | 3.4 | agent-2:sonnet | Rewrote the operator README for native sending, all seven workflows, configuration/env precedence, JSON, limits, retries, partial progress, security, and manual smoke testing; verified offline examples | README.md | README offline examples pass; build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass | ae6cc9b |
+| 19 | sub-phase | 4.1 | agent-2:sonnet | Completed compiled-binary acceptance coverage for config sources, flags, exit categories, exact input, failure positions, environment isolation, Windows process handling, and side-effect bypasses | test/e2e/main_test.go, test/e2e/harness_test.go, test/e2e/cli_test.go, test/e2e/input_config_test.go, test/e2e/send_test.go, test/e2e/server_test.go, test/e2e/acceptance_test.go | make test-e2e twice; make verify; no token/proxy/HOME inheritance; all T-E2E-01..10 pass | 77e1e96 |
 
 ## 5. Files touched
 
@@ -143,10 +144,17 @@ These commands are authoritative and must remain identical to overview/phase gat
 | test/e2e/server_test.go | Loopback fake Telegram server with decoded request recording and scripted responses | 3.3 |
 | test/e2e/send_test.go | Native send, ordered multi-chunk, partial failure, and full Unicode reference acceptance tests | 3.3 |
 | README.md | Complete native sender guide with seven workflows, retry/failure semantics, security, limits, and manual smoke procedure | 3.4 |
+| test/e2e/main_test.go | Windows-aware compiled executable suffix and isolated build environment | 4.1 |
+| test/e2e/harness_test.go | HOME injection, exact environment replacement, portable exit-code extraction, helper-process timeout cleanup, and environment tests | 4.1 |
+| test/e2e/cli_test.go | Version/help side-effect bypass acceptance with hostile endpoint and secret sentinel | 4.1 |
+| test/e2e/input_config_test.go | Exact output cardinality assertion for preserved whitespace/CRLF | 4.1 |
+| test/e2e/send_test.go | First/middle/final API failure progress matrix | 4.1 |
+| test/e2e/server_test.go | Script exhaustion and deep-copy request snapshot tests | 4.1 |
+| test/e2e/acceptance_test.go | Table-driven config, environment precedence, silent flag, and exit 2-7 compiled acceptance tests | 4.1 |
 
 ## 6. In-flight work
 
-claimed - nothing written yet; `.serena/` remains unrelated and untracked
+none - tree consistent; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -157,11 +165,11 @@ claimed - nothing written yet; `.serena/` remains unrelated and untracked
 | Format | `make fmt-check` | PASS | 2026-09-01 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-09-01 |
 | Unit | `make test` | PASS: go test -race ./... including input, config, JSON schema, final planner, service send orchestration, CLI, endpoint policy, UTF-16 primitives, splitter, and planner tests | 2026-09-01 |
-| E2E | `make test-e2e` | PASS: fresh compiled test-endpoint binary with input/config, dry-run/JSON, splitting, formatting, native Telegram sends, retries, partial progress, entities, and validation acceptance tests | 2026-09-01 |
+| E2E | `make test-e2e` | PASS: fresh compiled test-endpoint binary; repeated twice with config-source, flag, exact-input, exit 2-7, failure-position, environment-isolation, and version/help bypass matrix | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, compiled e2e acceptance matrix, vulnerability, Telegram protocol/retry, native send orchestration, and endpoint-policy gates | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -210,9 +218,9 @@ none
 | T-IN-02 | e2e | `DONE` | Message/stdin conflict |
 | T-IN-03 | e2e | `DONE` | Empty pipe error |
 | T-IN-04 | e2e | `DONE` | Input limit rejection |
-| T-CFG-01 | e2e | `TODO` | Default HOME config |
-| T-CFG-02 | e2e | `TODO` | Explicit config selection |
-| T-CFG-03 | e2e | `TODO` | Environment-only config |
+| T-CFG-01 | e2e | `DONE` | Default HOME config through compiled stdin send |
+| T-CFG-02 | e2e | `DONE` | Explicit config selection through compiled message send |
+| T-CFG-03 | e2e | `DONE` | Environment-only config through compiled native send |
 | T-CFG-04 | e2e | `TODO` | Explicit missing config error |
 | T-CFG-05 | e2e | `TODO` | Strict TOML/redaction |
 | T-JSON-01 | e2e | `DONE` | Dry-run stdout-only JSON |
@@ -237,16 +245,16 @@ none
 | T-TG-07 | e2e | `DONE` | Env credentials native send path against loopback fake server |
 | T-TG-08 | e2e | `DONE` | Ordered multi-chunk IDs |
 | T-TG-09 | e2e | `DONE` | Partial failure progress/stop |
-| T-E2E-01 | e2e | `TODO` | Default config plus stdin |
-| T-E2E-02 | e2e | `TODO` | Explicit config plus message flag |
-| T-E2E-03 | e2e | `TODO` | Environment precedence |
-| T-E2E-04 | e2e | `TODO` | Silent request field |
-| T-E2E-05 | e2e | `TODO` | Dry-run no credentials |
-| T-E2E-06 | e2e | `TODO` | Exit categories 2-7 |
-| T-E2E-07 | e2e | `TODO` | Whitespace/CRLF preservation |
+| T-E2E-01 | e2e | `DONE` | Default config plus stdin |
+| T-E2E-02 | e2e | `DONE` | Explicit config plus message flag |
+| T-E2E-03 | e2e | `DONE` | Environment precedence |
+| T-E2E-04 | e2e | `DONE` | Silent request field |
+| T-E2E-05 | e2e | `DONE` | Dry-run no credentials |
+| T-E2E-06 | e2e | `DONE` | Exit categories 2-7 |
+| T-E2E-07 | e2e | `DONE` | Whitespace/CRLF preservation |
 | T-E2E-08 | e2e | `DONE` | Full reference scenario: Unicode body, first-only header, UTF-16 entities, exact reconstruction, one success JSON |
-| T-E2E-09 | e2e | `TODO` | Failure position variants |
-| T-E2E-10 | e2e | `TODO` | Help/version bypass side effects |
+| T-E2E-09 | e2e | `DONE` | First/middle/final failure position variants |
+| T-E2E-10 | e2e | `DONE` | Help/version bypass side effects |
 | T-CTR-01 | container | `TODO` | Image version JSON |
 | T-CTR-02 | container | `TODO` | Image offline stdin dry-run |
 | T-CTR-03 | container | `TODO` | Non-root/platform inspect |
