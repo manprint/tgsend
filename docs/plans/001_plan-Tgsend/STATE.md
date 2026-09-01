@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 00:12 UTC | **By:** `agent-1:opus` | **Session:** 2
+> **Last updated:** 2026-09-01 00:16 UTC | **By:** `agent-1:opus` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `1.2`
+- **ID:** `1.3`
 - **Status:** `none`
-- **Intent:** Implement strict TOML and environment configuration loading.
+- **Intent:** Implement stable JSON success and error schemas.
 - **Phase:** 1 - Input, config, JSON, and offline CLI (`phase_02.md`)
-- **Next action:** Open sub-phase 1.2, then implement strict TOML/env merge, default and explicit config paths, ChatID normalization, validation, and redaction tests.
+- **Next action:** Open sub-phase 1.3, then implement stable version, preview, send, and error JSON schemas with golden tests.
 - **Assigned:** `agent-3:haiku`
-- **Repo state:** branch `main` | working tree dirty with unrelated untracked `.serena/` only | last commit `pending-1.1`
+- **Repo state:** branch `main` | working tree dirty with state update and unrelated untracked `.serena/` only | last commit `pending-1.2`
 
 ## 2. Feature context (self-contained recap)
 
@@ -62,7 +62,8 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 3 | sub-phase | 0.3 | agent-3:haiku | Added Cobra root, deterministic JSON presenter, version/help behavior, and safe error stream discipline | internal/presenter/*, internal/cli/*, cmd/tgsend/main.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 5ead4ea |
 | 4 | sub-phase | 0.4 | agent-2:sonnet | Added fresh compiled-binary e2e harness, strict JSON decoder, and CLI acceptance tests | test/e2e/*, internal/testutil/json.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | fa791e4 |
 | 5 | sub-phase | 0.5 | agent-3:haiku | Added phase-0 README for build, version, help, and current no-send limitation | README.md | README commands and build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 325dc4c |
-| 6 | sub-phase | 1.1 | agent-2:sonnet | Added bounded exact input acquisition with stdin/message precedence, terminal handling, limits, UTF-8 validation, typed errors, and fuzz coverage | internal/input/source.go, internal/input/source_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.1 |
+| 6 | sub-phase | 1.1 | agent-2:sonnet | Added bounded exact input acquisition with stdin/message precedence, terminal handling, limits, UTF-8 validation, typed errors, and fuzz coverage | internal/input/source.go, internal/input/source_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 979cca9 |
+| 7 | sub-phase | 1.2 | agent-2:sonnet | Added strict TOML/environment configuration loading with path precedence, ChatID normalization, validation, and secret-safe typed errors | internal/config/config.go, internal/config/config_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify all pass | pending-1.2 |
 
 ## 5. Files touched
 
@@ -90,10 +91,12 @@ These commands are authoritative and must remain identical to overview/phase gat
 | README.md | Phase-0 user guide for build, version, help, and no-send limitation | 0.5 |
 | internal/input/source.go | Exact message/stdin acquisition with bounded reads and UTF-8 validation | 1.1 |
 | internal/input/source_test.go | Input precedence, terminal, limit, error, and fuzz tests | 1.1 |
+| internal/config/config.go | Strict TOML/environment configuration loader with path and validation rules | 1.2 |
+| internal/config/config_test.go | Configuration precedence, type, validation, and redaction tests | 1.2 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 1.1; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 1.2; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
@@ -103,7 +106,7 @@ none - tree consistent after sub-phase 1.1; `.serena/` remains unrelated and unt
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
-| Unit | `make test` | PASS: go test -race ./... including input precedence, limits, UTF-8, and fuzz corpus tests | 2026-09-01 |
+| Unit | `make test` | PASS: go test -race ./... including input and strict config tests | 2026-09-01 |
 | E2E | `make test-e2e` | PASS: fresh compiled binary harness and CLI acceptance tests | 2026-09-01 |
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 | 2026-08-31 |
 | Release | `make release-check` | not-run | - |
@@ -140,7 +143,7 @@ none
 | Phase | File | Status | Notes |
 |-------|------|--------|-------|
 | 0 - Foundation and contracts | phase_01.md | `DONE` | 0.1-0.5 closed; build, test, e2e, lint, vulnerability, and README gates pass |
-| 1 - Input, config, JSON, and offline CLI | phase_02.md | `IN_PROGRESS` | 1.1 closed; next 1.2 strict TOML/env config |
+| 1 - Input, config, JSON, and offline CLI | phase_02.md | `IN_PROGRESS` | 1.1-1.2 closed; next 1.3 stable JSON schemas |
 | 2 - Message composition and chunking | phase_03.md | `TODO` | - |
 | 3 - Telegram transport and send orchestration | phase_04.md | `TODO` | - |
 | 4 - Binary e2e, image, and Docker wrapper | phase_05.md | `TODO` | - |
