@@ -208,7 +208,15 @@ func assertDockerCommonArgs(t *testing.T, args [][]byte, image, home, workdir st
 func assertConfigMount(t *testing.T, args [][]byte, configPath string) {
 	t.Helper()
 	mountIndex := indexOf(t, args, "--mount")
-	want := "type=bind,src=" + configPath + ",dst=" + configPath + ",readonly"
+	absPath, err := filepath.Abs(configPath)
+	if err != nil {
+		t.Fatalf("make config path absolute: %v", err)
+	}
+	resolvedPath, err := filepath.EvalSymlinks(absPath)
+	if err != nil {
+		resolvedPath = absPath
+	}
+	want := "type=bind,src=" + resolvedPath + ",dst=" + resolvedPath + ",readonly"
 	if string(args[mountIndex+1]) != want {
 		t.Fatalf("mount = %q, want %q; args=%#v", args[mountIndex+1], want, args)
 	}

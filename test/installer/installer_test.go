@@ -197,7 +197,7 @@ func cleanEnvironment(extra map[string]string) []string {
 	env := make([]string, 0, len(os.Environ())+len(extra))
 	for _, item := range os.Environ() {
 		key, _, ok := strings.Cut(item, "=")
-		if !ok || !remove[key] {
+		if !ok || (key != "PATH" && !strings.EqualFold(key, "PATH") && !remove[key]) {
 			env = append(env, item)
 		}
 	}
