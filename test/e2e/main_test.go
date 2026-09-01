@@ -31,6 +31,11 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	defer os.RemoveAll(buildDir)
+	homeDir := filepath.Join(buildDir, "home")
+	if err := os.MkdirAll(homeDir, 0o700); err != nil {
+		fmt.Fprintf(os.Stderr, "create e2e home directory: %v\n", err)
+		os.Exit(1)
+	}
 
 	executableName := "tgsend"
 	if runtime.GOOS == "windows" {
@@ -39,7 +44,7 @@ func TestMain(m *testing.M) {
 	binaryPath = filepath.Join(buildDir, executableName)
 	build := exec.Command("go", "build", "-ldflags", "-X github.com/manprint/tgsend/internal/buildinfo.TestEndpointEnabled=true", "-o", binaryPath, "./cmd/tgsend")
 	build.Dir = repoRoot
-	build.Env = buildEnvironment(filepath.Join(buildDir, "home"))
+	build.Env = buildEnvironment(homeDir)
 	var output bytes.Buffer
 	build.Stdout = &output
 	build.Stderr = &output
