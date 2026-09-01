@@ -1,7 +1,7 @@
 # Tgsend - Implementation State
 
 > **READ THIS FILE FIRST at the start of every session, before any other plan file. OPEN a unit in section 1 before touching code; CLOSE it after the gates pass.**
-> **Last updated:** 2026-09-01 01:02 UTC | **By:** `agent-2:sonnet` | **Session:** 2
+> **Last updated:** 2026-09-01 01:08 UTC | **By:** `agent-2:sonnet` | **Session:** 2
 
 ## 0. Protocol
 
@@ -23,13 +23,13 @@ This is the only execution-state file. Position, progress, ledger, verification,
 ## 1. Current unit
 
 - **Type:** `sub-phase`
-- **ID:** `3.1`
+- **ID:** `3.3`
 - **Status:** `none`
-- **Intent:** Implement the bounded Telegram 429 retry policy.
+- **Intent:** Complete native application send orchestration and process-level behavior.
 - **Phase:** 3 - Telegram transport and send orchestration (`phase_04.md`)
-- **Next action:** Read sub-phase 3.2 requirements, open the unit, then implement bounded 429 retries with exact sleep and cancellation behavior.
+- **Next action:** Read sub-phase 3.3 requirements, open the unit, then wire configuration, serial chunk sending, progress reporting, build metadata, and the loopback-only e2e path.
 - **Assigned:** `agent-2:sonnet`
-- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `80062ec`
+- **Repo state:** branch `main` | working tree dirty with closed-unit state plus unrelated untracked `.serena/` | last implementation commit `107c438`
 
 ## 2. Feature context (self-contained recap)
 
@@ -72,6 +72,7 @@ These commands are authoritative and must remain identical to overview/phase gat
 | 13 | sub-phase | 2.3 | agent-2:sonnet | Replaced BasicPlanner with the validated title/type/monospace composer, UTF-16 entities, long-body integration, CLI flags, and compiled message acceptance tests | internal/message/planner.go, internal/message/planner_test.go, internal/message/basic.go, internal/message/basic_test.go, internal/app/service.go, internal/app/service_test.go, internal/cli/root.go, internal/cli/root_test.go, internal/apperr/error.go, test/e2e/message_test.go | build, fmt-check, lint, test, test-e2e, vuln, verify, planner fuzz all pass; T-MSG-01..09 pass | 04ae677 |
 | 14 | sub-phase | 2.4 | agent-3:haiku | Updated README with phase-two formatting, UTF-16 chunking, limits, dry-run entities, examples, and offline status | README.md | README examples parsed successfully; build, fmt-check, lint, test, test-e2e, vuln, verify all pass | 38dbb59 |
 | 15 | sub-phase | 3.1 | agent-2:sonnet | Added one-attempt Telegram `sendMessage` JSON client with bounded response parsing, secret-safe typed errors, response closing, and base URL validation; stabilized vuln gate on patched Go 1.26.6 scanner runtime | internal/telegram/client.go, internal/telegram/client_test.go, Makefile | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; protocol/request/redaction tests pass | 80062ec |
+| 16 | sub-phase | 3.2 | agent-2:sonnet | Added bounded explicit-429 retry policy with production context-aware sleeper, overflow/budget checks, and exhaustive no-retry/attempt-count tests | internal/telegram/retry.go, internal/telegram/retry_test.go, internal/telegram/client.go, internal/telegram/client_test.go | build, fmt-check, lint, race unit, e2e, vulnerability, verify all pass; retry policy tests pass | 107c438 |
 
 ## 5. Files touched
 
@@ -130,19 +131,21 @@ These commands are authoritative and must remain identical to overview/phase gat
 | internal/cli/root_test.go | Added formatting flag forwarding and default assertions | 2.3 |
 | internal/apperr/error.go | Added safe title-too-long usage code | 2.3 |
 | test/e2e/message_test.go | Compiled binary message splitting and formatting acceptance tests | 2.3 |
-| internal/telegram/client.go | One-attempt Telegram Bot API request/response client with safe errors and bounded response reads | 3.1 |
-| internal/telegram/client_test.go | Telegram request, response, redaction, closure, cancellation, and endpoint validation tests | 3.1 |
+| internal/telegram/client.go | Telegram Bot API request/response client, bounded retry integration, safe errors, and bounded response reads | 3.1, 3.2 |
+| internal/telegram/client_test.go | Telegram request, response, retry integration, redaction, closure, cancellation, and endpoint validation tests | 3.1, 3.2 |
+| internal/telegram/retry.go | Context-aware bounded retry policy for explicit HTTP/API 429 responses | 3.2 |
+| internal/telegram/retry_test.go | Retry delay, cumulative budget, overflow, cancellation, attempt-count, and no-retry tests | 3.2 |
 | Makefile | Vulnerability gate uses patched Go 1.26.6 temporary snapshot runtime | 3.1 |
 
 ## 6. In-flight work
 
-none - tree consistent after sub-phase 3.1; `.serena/` remains unrelated and untracked
+none - tree consistent after sub-phase 3.2; `.serena/` remains unrelated and untracked
 
 ## 7. Verification state
 
 | Gate / test | Command | Last result | When |
 |-------------|---------|-------------|------|
-| Go toolchain | `go version` | PASS: local go1.26.1; module commands auto-selected go1.27.0 | 2026-08-31 |
+| Go toolchain | `go version` | PASS: local go1.26.1; module commands auto-selected go1.27.0 | 2026-09-01 |
 | Build | `make build` | PASS | 2026-08-31 |
 | Format | `make fmt-check` | PASS | 2026-08-31 |
 | Lint | `make lint` | PASS: go vet and golangci-lint v2.13.2 | 2026-08-31 |
@@ -151,7 +154,7 @@ none - tree consistent after sub-phase 3.1; `.serena/` remains unrelated and unt
 | Vulnerability | `make vuln` | PASS: govulncheck v1.1.4 with temporary Go 1.26.6 snapshot; `.tgsend` excluded | 2026-09-01 |
 | Release | `make release-check` | not-run | - |
 | Container | `make test-container` | not-run | - |
-| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, vulnerability, and Telegram client protocol gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
+| Aggregate | `make verify` | PASS: build, format, lint, race unit, e2e, vulnerability, Telegram client protocol, and bounded retry gates; planner fuzz target passed 3s; README examples parsed | 2026-09-01 |
 
 **Failing output (verbatim, trimmed to the error):**
 
@@ -163,7 +166,7 @@ none
 
 | # | Plan said | What was done | Why | Impact on later phases |
 |---|-----------|---------------|-----|------------------------|
-| 1 | Run pinned govulncheck directly against the Go 1.27 module | Scan a temporary copy with only the `go` directive lowered to 1.26.1; the pinned binary is built with local Go 1.26.1 | govulncheck v1.1.4 panics or rejects Go 1.27 package analysis; source compatibility is unchanged | Make vuln remains pinned and excludes `.tgsend`; later phases inherit the same scan workaround |
+| 1 | Run pinned govulncheck directly against the Go 1.27 module | Scan a temporary copy with only the `go` directive lowered to Go 1.26.6; the pinned binary is built and run with the downloaded Go 1.26.6 toolchain | govulncheck v1.1.4 panics in x/tools SSA while analyzing Go 1.27 packages; source compatibility is unchanged | Make vuln remains pinned and excludes `.tgsend`; later phases inherit the same scan workaround |
 
 ## 9. Blockers and open questions
 
@@ -218,12 +221,12 @@ none
 | T-MSG-07 | unit | `DONE` | Unicode reconstruction/bounds table |
 | T-MSG-08 | e2e | `DONE` | Header only first chunk |
 | T-MSG-09 | e2e | `DONE` | Invalid type/title rejected locally |
-| T-TG-01 | integration | `TODO` | Exact successful request |
-| T-TG-02 | integration | `TODO` | API rejection mapping |
-| T-TG-03 | integration | `TODO` | Protocol/transport failure mapping |
-| T-TG-04 | integration | `TODO` | One 429 retry then success |
-| T-TG-05 | integration | `TODO` | Retry exhaustion |
-| T-TG-06 | integration | `TODO` | Ambiguous failure never retried |
+| T-TG-01 | integration | `DONE` | Exact successful request |
+| T-TG-02 | integration | `DONE` | API rejection mapping |
+| T-TG-03 | integration | `DONE` | Protocol/transport failure mapping |
+| T-TG-04 | integration | `DONE` | One 429 retry then success |
+| T-TG-05 | integration | `DONE` | Retry exhaustion |
+| T-TG-06 | integration | `DONE` | Ambiguous failure never retried |
 | T-TG-07 | e2e | `TODO` | Env credentials real send path |
 | T-TG-08 | e2e | `TODO` | Ordered multi-chunk IDs |
 | T-TG-09 | e2e | `TODO` | Partial failure progress/stop |
