@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GO_VERSION: '1.27.0'
+  GORELEASER_VERSION: v2.18.0
+  SYFT_VERSION: v1.51.1
+
+jobs:
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Build
+        run: go build ./cmd/tgsend
+      - name: Unit tests
+        run: go test -race ./...
+      - name: Compiled e2e tests
+        run: go test -tags=e2e ./...
+
+  quality:
+    name: Quality and release snapshot
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v7.2.3
+        with:
+          distribution: goreleaser
+          version: ${{ env.GORELEASER_VERSION }}
+          install-only: true
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0.24.2
+        with:
+          syft-version: ${{ env.SYFT_VERSION }}
+      - name: Format
+        run: make fmt-check
+      - name: Lint
+        run: make lint
+      - name: Unit and e2e tests
+        run: make test && make test-e2e
+      - name: Vulnerability scan
+        run: make vuln
+      - name: Release configuration and snapshot
+        run: make release-check
+      - name: Container and wrapper smoke tests
+        run: make test-container
+
+  wrapper-macos:
+    name: POSIX wrapper tests (macOS)
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - name: Check wrapper syntax
+        run: sh -n tgsend.sh
+      - name: Run wrapper fake-runtime tests
+        run: go test ./test/wrapper
