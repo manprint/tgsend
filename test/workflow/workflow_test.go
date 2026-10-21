@@ -55,6 +55,37 @@ func assertContains(t *testing.T, content, want string) {
 	}
 }
 
+var (
+	usesPattern     = regexp.MustCompile(`(?m)^\s*(?:-\s*)?uses:\s*(.*?)\s*$`)
+	exactPinPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_./-]+)?@v[0-9]+\.[0-9]+\.[0-9]+$`)
+)
+
+// actionPinProblems reports every action reference that is not pinned to an
+// exact vX.Y.Z release tag.
+func actionPinProblems(workflow string) []string {
+	var problems []string
+	for _, match := range usesPattern.FindAllStringSubmatch(workflow, -1) {
+		if !exactPinPattern.MatchString(match[1]) {
+			problems = append(problems, "action "+match[1]+" is not pinned to an exact vX.Y.Z tag")
+		}
+	}
+	return problems
+}
+
+func TestActionPinProblems(t *testing.T) {
+	pinned := "      - uses: actions/checkout@v7.0.1\n        uses: anchore/sbom-action/download-syft@v0.24.2\n"
+	if problems := actionPinProblems(pinned); len(problems) != 0 {
+		t.Fatalf("actionPinProblems(exact pins) = %v, want none", problems)
+	}
+	for _, ref := range []string{"actions/checkout@main", "actions/checkout@latest", "actions/checkout@v7", "actions/checkout@v7.0", "actions/checkout@v7.0.1-rc.1", "actions/checkout", "actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab"} {
+		for _, line := range []string{"      - uses: " + ref, "        uses: " + ref} {
+			if problems := actionPinProblems(line + "\n"); len(problems) != 1 {
+				t.Errorf("actionPinProblems(%q) = %v, want one problem", line, problems)
+			}
+		}
+	}
+}
+
 func TestWorkflowYAMLAndPolicy(t *testing.T) {
 	ci := readWorkflow(t, "ci.yml")
 	release := readWorkflow(t, "release.yml")
@@ -62,8 +93,8 @@ func TestWorkflowYAMLAndPolicy(t *testing.T) {
 	parseYAML(t, "release.yml")
 
 	for _, workflow := range []string{ci, release} {
-		if regexp.MustCompile(`(?m)^\s*uses:.*@(main|master|latest)\s*$`).MatchString(workflow) {
-			t.Error("workflow uses a floating branch or latest action reference")
+		for _, problem := range actionPinProblems(workflow) {
+			t.Error(problem)
 		}
 		for _, forbidden := range []string{"pull_request_target", "TGSEND_TOKEN", "TGSEND_CHAT_ID", "api.telegram.org", "TELEGRAM_BOT_TOKEN"} {
 			if strings.Contains(workflow, forbidden) {
@@ -75,16 +106,17 @@ func TestWorkflowYAMLAndPolicy(t *testing.T) {
 	for _, event := range []string{"pull_request:", "push:", "branches:\n      - main"} {
 		assertContains(t, ci, event)
 	}
+	// Versions are left to Dependabot; actionPinProblems keeps them exact.
 	for _, action := range []string{
-		"actions/checkout@v7.0.1",
-		"actions/setup-go@v7.0.0",
-		"goreleaser/goreleaser-action@v7.2.3",
-		"anchore/sbom-action/download-syft@v0.24.2",
-		"docker/login-action@v4.6.0",
-		"docker/setup-buildx-action@v4.3.0",
+		"actions/checkout",
+		"actions/setup-go",
+		"goreleaser/goreleaser-action",
+		"anchore/sbom-action/download-syft",
+		"docker/login-action",
+		"docker/setup-buildx-action",
 	} {
-		if !strings.Contains(ci+release, action) {
-			t.Errorf("pinned action %q missing", action)
+		if !strings.Contains(ci+release, "uses: "+action+"@") {
+			t.Errorf("action %q missing", action)
 		}
 	}
 	assertContains(t, ci, "GO_VERSION: '1.27.3'")
