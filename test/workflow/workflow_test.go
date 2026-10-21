@@ -80,7 +80,7 @@ func TestWorkflowYAMLAndPolicy(t *testing.T) {
 			t.Errorf("pinned action %q missing", action)
 		}
 	}
-	assertContains(t, ci, "GO_VERSION: '1.27.0'")
+	assertContains(t, ci, "GO_VERSION: '1.27.3'")
 	assertContains(t, ci, "GORELEASER_VERSION: v2.18.0")
 	assertContains(t, ci, "SYFT_VERSION: v1.51.1")
 	assertContains(t, ci, "permissions:\n  contents: read")
@@ -90,6 +90,33 @@ func TestWorkflowYAMLAndPolicy(t *testing.T) {
 	assertContains(t, release, "packages: write")
 	assertContains(t, release, "password: ${{ secrets.GITHUB_TOKEN }}")
 	assertContains(t, release, "args: release --clean")
+}
+
+// TestToolchainPinsAgree keeps every build and the vulnerability scan on the
+// same Go release, so the scan checks the standard library that ships.
+func TestToolchainPinsAgree(t *testing.T) {
+	goVersionPattern := regexp.MustCompile(`(?m)^  GO_VERSION: '([0-9.]+)'$`)
+	ci := goVersionPattern.FindStringSubmatch(readWorkflow(t, "ci.yml"))
+	release := goVersionPattern.FindStringSubmatch(readWorkflow(t, "release.yml"))
+	if ci == nil || release == nil || ci[1] != release[1] {
+		t.Fatalf("workflow GO_VERSION pins = %v / %v, want one shared version", ci, release)
+	}
+	makefile, err := os.ReadFile(filepath.Join(repoRoot(t), "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	vuln := regexp.MustCompile(`(?m)^VULN_GO_VERSION := go([0-9.]+)$`).FindSubmatch(makefile)
+	if vuln == nil || string(vuln[1]) != ci[1] {
+		t.Fatalf("Makefile VULN_GO_VERSION = %q, want go%s", vuln, ci[1])
+	}
+	goMod, err := os.ReadFile(filepath.Join(repoRoot(t), "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	directive := regexp.MustCompile(`(?m)^go ([0-9.]+)$`).FindSubmatch(goMod)
+	if directive == nil || string(directive[1]) != ci[1] {
+		t.Fatalf("go.mod go directive = %q, want %s", directive, ci[1])
+	}
 }
 
 func TestWorkflowCommandsMatchMakeTargets(t *testing.T) {

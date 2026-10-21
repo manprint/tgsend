@@ -1,8 +1,9 @@
 SHELL := /bin/sh
 
-GOLANGCI_LINT_VERSION := v2.13.2
-GOVULNCHECK_VERSION := v1.1.4
-VULN_GO_VERSION := go1.26.6
+GOLANGCI_LINT_VERSION := v2.14.0
+GOVULNCHECK_VERSION := v1.9.0
+# Scan with the toolchain that builds releases (GO_VERSION in the workflows).
+VULN_GO_VERSION := go1.27.3
 GORELEASER_VERSION := v2.18.0
 SYFT_VERSION := v1.51.1
 
@@ -29,7 +30,7 @@ test-e2e:
 	go test -tags=e2e ./...
 
 vuln:
-	project_dir=$$(mktemp -d); mkdir -p $$project_dir/project; tar --exclude='./.git' --exclude='./.serena' --exclude='./.tokensave' --exclude='./.tgsend' --exclude='./docs' --exclude='./bin' --exclude='./dist' --exclude='./coverage.out' -cf - . | tar -C $$project_dir/project -xf -; sed -i 's/^go 1\.27\.0$$/go 1.26.6/' $$project_dir/project/go.mod; tool_dir=$$(mktemp -d); GOBIN=$$tool_dir GOTOOLCHAIN=$(VULN_GO_VERSION) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION); (cd $$project_dir/project && GOTOOLCHAIN=$(VULN_GO_VERSION) $$tool_dir/govulncheck ./...)
+	tool_dir=$$(mktemp -d); GOBIN=$$tool_dir GOTOOLCHAIN=$(VULN_GO_VERSION) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) && GOTOOLCHAIN=$(VULN_GO_VERSION) $$tool_dir/govulncheck ./...
 
 test-container:
 	sh test/container/smoke.sh

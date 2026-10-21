@@ -20,7 +20,7 @@ body segments reproduces the input byte-for-byte, and stdout is one schema_versi
 
 | # | Decision | Consequence |
 |---|----------|-------------|
-| **D1** | Module `github.com/manprint/tgsend`, Go `1.27.0`. | `go.mod`, CI, and release builds use the same toolchain. |
+| **D1** | Module `github.com/manprint/tgsend`, Go `1.27.3`. | `go.mod`, CI, and release builds use the same toolchain. |
 | **D2 (user, Q1)** | Use Cobra `v1.10.2`. | `cmd/tgsend` stays thin; Cobra parses flags/help while the application service owns behavior. |
 | **D3 (user, Q2)** | Use `github.com/pelletier/go-toml/v2` `v2.4.3`. | Strict TOML decoding rejects unknown keys and type mismatches. |
 | **D4** | Config keys are `token` and `chat_id`; `TGSEND_TOKEN` and `TGSEND_CHAT_ID` override each key independently. | A missing default `~/.tgsend` is allowed only if the merged environment is complete; an explicitly named missing `-c` file always fails. |
@@ -113,9 +113,9 @@ Live status is only in `STATE.md` section 11.
 | R5 | GoReleaser build targets and current release. | https://goreleaser.com/customization/builds/go/ | v2.18.0, checked 2026-09-01 |
 | R6 | `dockers_v2` reuses binaries, uses buildx, and builds/pushes multi-platform images. | https://goreleaser.com/customization/package/dockers_v2/ | v2.18.0 docs |
 | R7 | GHCR workflow permissions and `GITHUB_TOKEN` authentication. | https://docs.github.com/actions/publishing-packages/publishing-docker-images | checked 2026-09-01 |
-| R8 | golangci-lint tool version. | https://github.com/golangci/golangci-lint/releases/tag/v2.13.2 | v2.13.2 |
-| R9 | govulncheck tool version. | https://github.com/golang/vuln/releases/tag/v1.1.4 | v1.1.4 |
-| R10 | Go toolchain release contract. | https://go.dev/doc/devel/release | Go 1.27.0, checked 2026-09-01 |
+| R8 | golangci-lint tool version. | https://github.com/golangci/golangci-lint/releases/tag/v2.14.0 | v2.14.0 |
+| R9 | govulncheck tool version. | https://github.com/golang/vuln/releases/tag/v1.9.0 | v1.9.0 |
+| R10 | Go toolchain release contract. | https://go.dev/doc/devel/release | Go 1.27.3, checked 2026-10-21 |
 | R11 | Syft version used to generate release SBOMs. | https://github.com/anchore/syft/releases/tag/v1.51.1 | v1.51.1 |
 | R12 | Exact CI action release tags. | https://github.com/actions/checkout/releases/tag/v7.0.1 | checkout v7.0.1; companion action releases checked 2026-09-01 |
 | R13 | Static non-root runtime image with CA certificates. | https://github.com/GoogleContainerTools/distroless/tree/main/base | `gcr.io/distroless/static-debian12:nonroot`, checked 2026-09-01 |

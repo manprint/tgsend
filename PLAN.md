@@ -12,7 +12,7 @@ The final acceptance scenario sends a long Unicode body with WARNING, title, and
 
 ## Fixed contracts
 
-- Module: `github.com/manprint/tgsend`; Go `1.27.0`; Cobra `v1.10.2`; go-toml/v2 `v2.4.3`.
+- Module: `github.com/manprint/tgsend`; Go `1.27.3`; Cobra `v1.10.2`; go-toml/v2 `v2.4.3`.
 - Input: exactly one non-empty source (`-m` or stdin), valid UTF-8, no trimming, 1 MiB default maximum.
 - Config: strict TOML keys `token`, `chat_id`; environment overrides each field; explicit missing `-c` always fails.
 - Formatting: explicit Telegram entities, no parse mode; title bold; monospace body `pre`; fixed severity code points; header only chunk 1.
