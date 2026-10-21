@@ -72,6 +72,34 @@ func TestEnvironmentCompletesMissingDefault(t *testing.T) {
 	}
 }
 
+func TestUnavailableHomeLetsEnvironmentComplete(t *testing.T) {
+	homes := map[string]func() (string, error){
+		"error": func() (string, error) { return "", errors.New("$HOME is not defined") },
+		"empty": func() (string, error) { return "", nil },
+	}
+	for name, homeDir := range homes {
+		t.Run(name, func(t *testing.T) {
+			config, err := Load(LoadOptions{
+				HomeDir: homeDir,
+				ReadFile: func(path string) ([]byte, error) {
+					t.Fatalf("ReadFile(%q) called without a home directory", path)
+					return nil, nil
+				},
+				LookupEnv: env(map[string]string{tokenEnv: "env-token", chatIDEnv: "-100"}),
+			})
+			if err != nil {
+				t.Fatalf("Load() error = %v", err)
+			}
+			if config != (Config{Token: "env-token", ChatID: "-100"}) {
+				t.Fatalf("Load() = %#v", config)
+			}
+
+			_, err = Load(LoadOptions{HomeDir: homeDir, LookupEnv: env(map[string]string{})})
+			assertCode(t, err, apperr.CodeConfigIncomplete)
+		})
+	}
+}
+
 func TestExplicitMissingFailsWithCompleteEnvironment(t *testing.T) {
 	_, err := Load(LoadOptions{
 		Path:     "/safe/missing.toml",

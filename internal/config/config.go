@@ -59,21 +59,26 @@ func Load(options LoadOptions) (Config, error) {
 		if homeDir == nil {
 			homeDir = os.UserHomeDir
 		}
-		home, err := homeDir()
-		if err != nil || home == "" {
-			return Config{}, unreadable("configuration home is unavailable", err)
+		// Without a home directory there is no default file. That is the
+		// same as a missing default, so the environment can still complete
+		// the configuration (for example under cron or systemd).
+		if home, err := homeDir(); err == nil && home != "" {
+			path = filepath.Join(home, ".tgsend")
 		}
-		path = filepath.Join(home, ".tgsend")
 	}
 
-	data, err := readFile(path)
-	if err != nil {
-		if !options.Explicit && errors.Is(err, fs.ErrNotExist) {
-			data = nil
-		} else if errors.Is(err, fs.ErrNotExist) {
-			return Config{}, notFound("configuration file not found", err)
-		} else {
-			return Config{}, unreadable("configuration file is not readable", err)
+	var data []byte
+	if path != "" {
+		var err error
+		data, err = readFile(path)
+		if err != nil {
+			if !options.Explicit && errors.Is(err, fs.ErrNotExist) {
+				data = nil
+			} else if errors.Is(err, fs.ErrNotExist) {
+				return Config{}, notFound("configuration file not found", err)
+			} else {
+				return Config{}, unreadable("configuration file is not readable", err)
+			}
 		}
 	}
 
