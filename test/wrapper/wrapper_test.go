@@ -16,6 +16,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/manprint/tgsend/internal/cli"
+	"github.com/spf13/pflag"
 )
 
 type wrapperResult struct {
@@ -134,15 +137,37 @@ func TestWrapperNoDockerExit(t *testing.T) {
 	}
 }
 
-func TestWrapperMissingConfigJSONExit3(t *testing.T) {
+func TestWrapperMissingExplicitConfigDefersToBinary(t *testing.T) {
 	home := t.TempDir()
 	missing := filepath.Join(home, "missing.toml")
-	result, dockerArgs, _ := invokeWrapper(t, []string{"--config", missing, "-m", "message"}, nil, home, t.TempDir(), nil)
+	cases := [][]string{
+		{"--config", missing, "-m", "message"},
+		{"--dry-run", "--config", missing, "-m", "message"},
+		{"--config=", "-m", "message"},
+		{"-c", "", "-m", "message"},
+	}
+	for index, args := range cases {
+		t.Run(string(rune('a'+index)), func(t *testing.T) {
+			result, dockerArgs, _ := invokeWrapper(t, args, nil, home, t.TempDir(), nil)
+			if result.exitCode != 0 || len(result.stderr) != 0 {
+				t.Fatalf("exit/stderr = %d/%q", result.exitCode, result.stderr)
+			}
+			if containsArg(dockerArgs, "--mount") {
+				t.Fatalf("missing config was mounted: %#v", dockerArgs)
+			}
+			assertForwardedArgs(t, dockerArgs, "ghcr.io/manprint/tgsend:latest", args)
+		})
+	}
+}
+
+func TestWrapperDirectoryConfigJSONExit3(t *testing.T) {
+	home := t.TempDir()
+	result, dockerArgs, _ := invokeWrapper(t, []string{"--config", home, "-m", "message"}, nil, home, t.TempDir(), nil)
 	if result.exitCode != 3 || len(result.stdout) != 0 || len(dockerArgs) != 0 {
-		t.Fatalf("missing config result = %#v, docker args = %#v", result, dockerArgs)
+		t.Fatalf("directory config result = %#v, docker args = %#v", result, dockerArgs)
 	}
 	if bytes.Count(result.stderr, []byte("\n")) != 1 {
-		t.Fatalf("missing config output cardinality = %q", result.stderr)
+		t.Fatalf("directory config output cardinality = %q", result.stderr)
 	}
 	var envelope struct {
 		Error struct {
@@ -150,11 +175,169 @@ func TestWrapperMissingConfigJSONExit3(t *testing.T) {
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(result.stderr, &envelope); err != nil {
-		t.Fatalf("decode missing config error: %v", err)
+		t.Fatalf("decode directory config error: %v", err)
 	}
-	if envelope.Error.Code != "config_not_found" {
-		t.Fatalf("missing config code = %q", envelope.Error.Code)
+	if envelope.Error.Code != "config_unreadable" {
+		t.Fatalf("directory config code = %q", envelope.Error.Code)
 	}
+}
+
+func TestWrapperIgnoresConfigLikeValuesOfOtherFlags(t *testing.T) {
+	home := t.TempDir()
+	var valueFlags []*pflag.Flag
+	cli.NewRoot(cli.Dependencies{}).Flags().VisitAll(func(flag *pflag.Flag) {
+		if flag.Name != "config" && flag.Value.Type() != "bool" {
+			valueFlags = append(valueFlags, flag)
+		}
+	})
+	if len(valueFlags) == 0 {
+		t.Fatal("no value-taking flags found")
+	}
+	for _, flag := range valueFlags {
+		spellings := []string{"--" + flag.Name}
+		if flag.Shorthand != "" {
+			spellings = append(spellings, "-"+flag.Shorthand)
+		}
+		for _, spelling := range spellings {
+			for _, value := range []string{"-c", "-critical failure", "--config", "--config=x"} {
+				args := []string{"--dry-run", spelling, value}
+				t.Run(spelling+" "+value, func(t *testing.T) {
+					result, dockerArgs, _ := invokeWrapper(t, args, nil, home, t.TempDir(), nil)
+					if result.exitCode != 0 || len(result.stderr) != 0 {
+						t.Fatalf("exit/stderr = %d/%q", result.exitCode, result.stderr)
+					}
+					if containsArg(dockerArgs, "--mount") {
+						t.Fatalf("flag value was treated as a config path: %#v", dockerArgs)
+					}
+					assertForwardedArgs(t, dockerArgs, "ghcr.io/manprint/tgsend:latest", args)
+				})
+			}
+		}
+	}
+}
+
+func TestWrapperShortConfigWithEquals(t *testing.T) {
+	home := t.TempDir()
+	configPath := filepath.Join(home, "equals.toml")
+	writeWrapperConfig(t, configPath)
+	result, dockerArgs, _ := invokeWrapper(t, []string{"-c=" + configPath, "--dry-run", "-m", "message"}, nil, home, t.TempDir(), nil)
+	if result.exitCode != 0 {
+		t.Fatalf("exit/stderr = %d/%q", result.exitCode, result.stderr)
+	}
+	assertConfigMount(t, dockerArgs, configPath)
+}
+
+func TestWrapperSymlinkedDefaultConfigMountedWhereBinaryLooks(t *testing.T) {
+	home := t.TempDir()
+	target := filepath.Join(t.TempDir(), "dotfiles", "tgsend.toml")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatalf("mkdir dotfiles: %v", err)
+	}
+	writeWrapperConfig(t, target)
+	link := filepath.Join(home, ".tgsend")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink config: %v", err)
+	}
+	result, dockerArgs, _ := invokeWrapper(t, []string{"-m", "message"}, nil, home, t.TempDir(), nil)
+	if result.exitCode != 0 {
+		t.Fatalf("exit/stderr = %d/%q", result.exitCode, result.stderr)
+	}
+	assertMount(t, dockerArgs, resolvedPath(t, target), link)
+}
+
+func TestWrapperRelativeConfigMountedUnderWorkdir(t *testing.T) {
+	workdir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(workdir, "conf"), 0o755); err != nil {
+		t.Fatalf("mkdir conf: %v", err)
+	}
+	configPath := filepath.Join(workdir, "conf", "relative.toml")
+	writeWrapperConfig(t, configPath)
+	result, dockerArgs, _ := invokeWrapper(t, []string{"-c", "conf/relative.toml", "-m", "message"}, nil, t.TempDir(), workdir, nil)
+	if result.exitCode != 0 {
+		t.Fatalf("exit/stderr = %d/%q", result.exitCode, result.stderr)
+	}
+	assertMount(t, dockerArgs, resolvedPath(t, configPath), workdir+"/conf/relative.toml")
+}
+
+func TestWrapperQuotesCommaInConfigMount(t *testing.T) {
+	home := t.TempDir()
+	configPath := filepath.Join(home, "a,b.toml")
+	writeWrapperConfig(t, configPath)
+	result, dockerArgs, _ := invokeWrapper(t, []string{"-c", configPath, "-m", "message"}, nil, home, t.TempDir(), nil)
+	if result.exitCode != 0 {
+		t.Fatalf("exit/stderr = %d/%q", result.exitCode, result.stderr)
+	}
+	mountIndex := indexOf(t, dockerArgs, "--mount")
+	want := `type=bind,"src=` + resolvedPath(t, configPath) + `","dst=` + configPath + `",readonly`
+	if string(dockerArgs[mountIndex+1]) != want {
+		t.Fatalf("mount = %q, want %q", dockerArgs[mountIndex+1], want)
+	}
+}
+
+func TestWrapperDoesNotAttachTerminalStdin(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("pseudo-terminal harness uses util-linux script")
+	}
+	scriptPath, err := exec.LookPath("script")
+	if err != nil {
+		t.Skip("script is not available")
+	}
+	env, argsPath := fakeDockerEnv(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, scriptPath, "-qec", "'"+filepath.Join(projectRoot(t), "tgsend.sh")+"' --dry-run -m message", "/dev/null")
+	command.Env = env
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("wrapper under a terminal failed: %v\n%s", err, output)
+	}
+	assertStdinNotAttached(t, readNULArgs(t, argsPath))
+}
+
+func TestWrapperDoesNotAttachDevNullStdin(t *testing.T) {
+	env, argsPath := fakeDockerEnv(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// A nil Stdin connects the wrapper to the null device, as cron does.
+	command := exec.CommandContext(ctx, filepath.Join(projectRoot(t), "tgsend.sh"), "--dry-run", "-m", "message")
+	command.Env = env
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("wrapper with /dev/null stdin failed: %v\n%s", err, output)
+	}
+	assertStdinNotAttached(t, readNULArgs(t, argsPath))
+}
+
+func fakeDockerEnv(t *testing.T) ([]string, string) {
+	t.Helper()
+	temp := t.TempDir()
+	fakeBin := filepath.Join(temp, "bin")
+	if err := os.Mkdir(fakeBin, 0o755); err != nil {
+		t.Fatalf("mkdir fake bin: %v", err)
+	}
+	fakeScript, err := os.ReadFile(filepath.Join(projectRoot(t), "test", "wrapper", "testdata", "fake-docker.sh"))
+	if err != nil {
+		t.Fatalf("read fake Docker: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(fakeBin, "docker"), fakeScript, 0o755); err != nil {
+		t.Fatalf("write fake Docker: %v", err)
+	}
+	argsPath := filepath.Join(temp, "args.bin")
+	return []string{
+		"PATH=" + fakeBin + string(os.PathListSeparator) + os.Getenv("PATH"),
+		"HOME=" + t.TempDir(),
+		"FAKE_DOCKER_ARGS=" + argsPath,
+		"FAKE_DOCKER_STDIN=" + filepath.Join(temp, "stdin.bin"),
+	}, argsPath
+}
+
+func assertStdinNotAttached(t *testing.T, dockerArgs [][]byte) {
+	t.Helper()
+	if len(dockerArgs) == 0 {
+		t.Fatal("fake Docker was not invoked")
+	}
+	if containsArg(dockerArgs, "-i") {
+		t.Fatalf("stdin was attached to the container: %#v", dockerArgs)
+	}
+	assertForwardedArgs(t, dockerArgs, "ghcr.io/manprint/tgsend:latest", []string{"--dry-run", "-m", "message"})
 }
 
 func TestWrapperPreservesContainerExit(t *testing.T) {
@@ -209,18 +392,42 @@ func assertDockerCommonArgs(t *testing.T, args [][]byte, image, home, workdir st
 
 func assertConfigMount(t *testing.T, args [][]byte, configPath string) {
 	t.Helper()
-	mountIndex := indexOf(t, args, "--mount")
 	absPath, err := filepath.Abs(configPath)
 	if err != nil {
 		t.Fatalf("make config path absolute: %v", err)
 	}
-	resolvedPath, err := filepath.EvalSymlinks(absPath)
-	if err != nil {
-		resolvedPath = absPath
-	}
-	want := "type=bind,src=" + resolvedPath + ",dst=" + resolvedPath + ",readonly"
+	assertMount(t, args, resolvedPath(t, absPath), absPath)
+}
+
+// assertMount checks that the physical config file is mounted at the path the
+// binary opens inside the container.
+func assertMount(t *testing.T, args [][]byte, source, destination string) {
+	t.Helper()
+	mountIndex := indexOf(t, args, "--mount")
+	want := "type=bind,src=" + source + ",dst=" + destination + ",readonly"
 	if string(args[mountIndex+1]) != want {
 		t.Fatalf("mount = %q, want %q; args=%#v", args[mountIndex+1], want, args)
+	}
+}
+
+func resolvedPath(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatalf("resolve %q: %v", path, err)
+	}
+	return resolved
+}
+
+func assertForwardedArgs(t *testing.T, args [][]byte, image string, want []string) {
+	t.Helper()
+	imageIndex := indexOf(t, args, image)
+	got := make([]string, len(args[imageIndex+1:]))
+	for index, arg := range args[imageIndex+1:] {
+		got[index] = string(arg)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("forwarded args = %#v, want %#v", got, want)
 	}
 }
 
