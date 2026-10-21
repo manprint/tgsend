@@ -70,7 +70,7 @@ jobs:
           version: ${{ env.GORELEASER_VERSION }}
           install-only: true
       - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.24.2
+        uses: anchore/sbom-action/download-syft@v0.24.3
         with:
           syft-version: ${{ env.SYFT_VERSION }}
       - name: Format
