@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"strings"
 
 	"github.com/manprint/tgsend/internal/app"
 	"github.com/manprint/tgsend/internal/apperr"
@@ -40,6 +39,9 @@ func NewRoot(deps Dependencies) *cobra.Command {
 	root.SetIn(deps.Stdin)
 	root.SetOut(deps.Stdout)
 	root.SetErr(deps.Stderr)
+	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
+		return apperr.New(apperr.KindUsage, apperr.CodeInvalidFlag, "invalid command-line flag", err)
+	})
 
 	var version bool
 	var message string
@@ -61,7 +63,13 @@ func NewRoot(deps Dependencies) *cobra.Command {
 	root.Flags().Int64Var(&maxInputBytes, "max-input-bytes", 1<<20, "maximum input size in bytes")
 	root.RunE = func(cmd *cobra.Command, _ []string) error {
 		if version {
-			return presenter.WriteVersion(deps.Stdout, deps.BuildInfo)
+			if err := presenter.WriteVersion(deps.Stdout, deps.BuildInfo); err != nil {
+				return outputError(err)
+			}
+			return nil
+		}
+		if maxInputBytes <= 0 {
+			return apperr.New(apperr.KindUsage, apperr.CodeInvalidFlag, "max input bytes must be positive", nil)
 		}
 		if deps.App == nil {
 			return apperr.New(apperr.KindTransport, apperr.CodeTelegramTransport, "application service is not configured", nil)
@@ -81,16 +89,23 @@ func NewRoot(deps Dependencies) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		return presenter.WriteSend(deps.Stdout, result)
+		if err := presenter.WriteSend(deps.Stdout, result); err != nil {
+			return outputError(err)
+		}
+		return nil
 	}
 	return root
 }
 
 func noPositionalArgs(_ *cobra.Command, args []string) error {
 	if len(args) != 0 {
-		return errors.New("positional arguments are not allowed")
+		return apperr.New(apperr.KindUsage, apperr.CodeInvalidArguments, "positional arguments are not allowed", nil)
 	}
 	return nil
+}
+
+func outputError(cause error) error {
+	return apperr.New(apperr.KindInternal, apperr.CodeInternal, "could not write command output", cause)
 }
 
 // Execute runs the CLI and returns its stable process exit code.
@@ -108,14 +123,13 @@ func Execute(ctx context.Context, deps Dependencies, args []string) int {
 	return 0
 }
 
+// classifyCobraError keeps typed errors and hides every other cause behind a
+// generic internal error. Flag and argument failures are typed where Cobra
+// reports them, so an unexpected error is never presented as a usage error.
 func classifyCobraError(err error) error {
 	var appErr *apperr.Error
 	if errors.As(err, &appErr) && appErr != nil {
 		return appErr
 	}
-
-	if strings.Contains(err.Error(), "flag") {
-		return apperr.New(apperr.KindUsage, apperr.CodeInvalidFlag, "invalid command-line flag", err)
-	}
-	return apperr.New(apperr.KindUsage, apperr.CodeInvalidArguments, "positional arguments are not allowed", err)
+	return apperr.New(apperr.KindInternal, apperr.CodeInternal, "internal error", err)
 }

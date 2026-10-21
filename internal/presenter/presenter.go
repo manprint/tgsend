@@ -126,7 +126,7 @@ func ErrorBodyFrom(err error) ErrorBody {
 	var appErr *apperr.Error
 	if !errors.As(err, &appErr) || appErr == nil {
 		return ErrorBody{
-			Code:      "internal_error",
+			Code:      string(apperr.CodeInternal),
 			Message:   "internal error",
 			Retryable: false,
 		}

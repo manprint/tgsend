@@ -170,12 +170,95 @@ func TestAppErrorsReachCorrectStreamAndExit(t *testing.T) {
 	}
 }
 
+func TestNonPositiveMaxInputBytesRejectedBeforeRun(t *testing.T) {
+	for _, value := range []string{"0", "-1"} {
+		t.Run(value, func(t *testing.T) {
+			runner := &captureRunner{}
+			var stdout, stderr bytes.Buffer
+			code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, []string{"--dry-run", "-m", "body", "--max-input-bytes", value})
+			if code != 2 || stdout.Len() != 0 {
+				t.Fatalf("code/stdout = %d/%q, want 2/empty", code, stdout.String())
+			}
+			if runner.called {
+				t.Fatal("application ran with a non-positive input limit")
+			}
+			if got := decodeErrorCode(t, stderr.Bytes()); got != "invalid_flag" {
+				t.Fatalf("error code = %q, want invalid_flag", got)
+			}
+		})
+	}
+}
+
+func TestFlagValueParseErrorIsInvalidFlag(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: &captureRunner{}}, []string{"--max-input-bytes", "many"})
+	if code != 2 {
+		t.Fatalf("Execute() = %d, want 2", code)
+	}
+	if got := decodeErrorCode(t, stderr.Bytes()); got != "invalid_flag" {
+		t.Fatalf("error code = %q, want invalid_flag", got)
+	}
+}
+
+func TestUntypedRunErrorIsInternalNotUsage(t *testing.T) {
+	runner := &captureRunner{err: context.Canceled}
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), Dependencies{Stdout: &stdout, Stderr: &stderr, App: runner}, nil)
+	if code != 1 {
+		t.Fatalf("Execute() = %d, want 1", code)
+	}
+	if got := decodeErrorCode(t, stderr.Bytes()); got != "internal_error" {
+		t.Fatalf("error code = %q, want internal_error", got)
+	}
+	if strings.Contains(stderr.String(), "positional") {
+		t.Fatalf("untyped error reported as a positional-argument error: %q", stderr.String())
+	}
+}
+
+func TestOutputWriteFailureIsInternalError(t *testing.T) {
+	for _, args := range [][]string{nil, {"--version"}} {
+		var stderr bytes.Buffer
+		code := Execute(context.Background(), Dependencies{Stdout: failingWriter{}, Stderr: &stderr, App: &captureRunner{}}, args)
+		if code != 1 {
+			t.Fatalf("Execute(%q) = %d, want 1", args, code)
+		}
+		if got := decodeErrorCode(t, stderr.Bytes()); got != "internal_error" {
+			t.Fatalf("Execute(%q) error code = %q, want internal_error", args, got)
+		}
+		if !strings.Contains(stderr.String(), "could not write command output") {
+			t.Fatalf("Execute(%q) stderr = %q", args, stderr.String())
+		}
+	}
+}
+
+func decodeErrorCode(t *testing.T, data []byte) string {
+	t.Helper()
+	if bytes.Count(data, []byte("\n")) != 1 {
+		t.Fatalf("stderr is not one JSON document: %q", data)
+	}
+	var envelope struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		t.Fatalf("stderr is not JSON: %v", err)
+	}
+	return envelope.Error.Code
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+
 type captureRunner struct {
 	options app.Options
 	err     error
+	called  bool
 }
 
 func (runner *captureRunner) Run(_ context.Context, options app.Options) (presenter.SendResult, error) {
+	runner.called = true
 	runner.options = options
 	if runner.err != nil {
 		return presenter.SendResult{}, runner.err

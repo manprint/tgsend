@@ -40,6 +40,11 @@ func TestInputMessageStdinConflict(t *testing.T) {
 	assertE2EError(t, result, 2, "conflicting_input")
 }
 
+func TestInputMaxBytesZeroRejected(t *testing.T) {
+	result := run(t, []string{"--dry-run", "-m", "body", "--max-input-bytes", "0"}, nil, nil, 5*time.Second)
+	assertE2EError(t, result, 2, "invalid_flag")
+}
+
 func TestInputEmptyPipe(t *testing.T) {
 	result := run(t, []string{"--dry-run"}, nil, nil, 5*time.Second)
 	assertE2EError(t, result, 4, "input_empty")

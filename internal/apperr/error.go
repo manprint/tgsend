@@ -16,6 +16,7 @@ const (
 	KindTelegram  Kind = "telegram"
 	KindTransport Kind = "transport"
 	KindRateLimit Kind = "rate_limit"
+	KindInternal  Kind = "internal"
 )
 
 // Code is the stable machine-readable error identifier.
@@ -38,6 +39,7 @@ const (
 	CodeTelegramTransport   Code = "telegram_transport"
 	CodeTelegramProtocol    Code = "telegram_protocol"
 	CodeTelegramRateLimited Code = "telegram_rate_limited"
+	CodeInternal            Code = "internal_error"
 )
 
 // Progress reports how many chunks were sent before a failure.

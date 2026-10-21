@@ -27,6 +27,9 @@ func TestExitCodeByKind(t *testing.T) {
 		})
 	}
 
+	if got := ExitCode(New(KindInternal, CodeInternal, "internal error", nil)); got != 1 {
+		t.Fatalf("ExitCode(internal) = %d, want 1", got)
+	}
 	if got := ExitCode(errors.New("unknown")); got != 1 {
 		t.Fatalf("ExitCode(unknown) = %d, want 1", got)
 	}
