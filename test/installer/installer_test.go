@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -53,6 +54,12 @@ func newReleaseFixture(t *testing.T) *releaseFixture {
 		f.mu.Lock()
 		f.requests = append(f.requests, r.URL.Path)
 		f.mu.Unlock()
+		// Serve only GitHub's release asset layouts so installer URLs that
+		// GitHub would answer with 404 fail here too.
+		if !strings.HasPrefix(r.URL.Path, "/releases/latest/download/") && !strings.HasPrefix(r.URL.Path, "/releases/download/v"+fixtureVersion+"/") {
+			http.NotFound(w, r)
+			return
+		}
 		name := filepath.Base(r.URL.Path)
 		if name == "checksums.txt" {
 			_, _ = io.WriteString(w, f.checksumText)
@@ -266,7 +273,7 @@ func TestInstallerOSArchMap(t *testing.T) {
 			if err != nil {
 				t.Fatalf("installer failed: %v\n%s", err, out)
 			}
-			assertPath(t, f.paths(), "/releases/v1.2.3/tgsend_"+tc.suffix+".tar.gz")
+			assertPath(t, f.paths(), "/releases/download/v1.2.3/tgsend_"+tc.suffix+".tar.gz")
 			if _, err := os.Stat(filepath.Join(dir, "tgsend")); err != nil {
 				t.Fatalf("installed binary missing: %v", err)
 			}
@@ -281,7 +288,7 @@ func TestVersionNormalizationAndRejection(t *testing.T) {
 			if out, _, err := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": version}); err != nil {
 				t.Fatalf("installer rejected %q: %v\n%s", version, err, out)
 			}
-			assertPath(t, f.paths(), "/releases/v1.2.3/tgsend_linux_amd64.tar.gz")
+			assertPath(t, f.paths(), "/releases/download/v1.2.3/tgsend_linux_amd64.tar.gz")
 		})
 	}
 	for _, version := range []string{"", "1.2", "1.2.3.4", "1.02.3", "v1.2.3-rc1", "1..3"} {
@@ -313,7 +320,7 @@ func TestLatestAndPinnedURLs(t *testing.T) {
 		if out, _, err := runInstaller(t, f, "install.sh", map[string]string{"TGSEND_VERSION": "1.2.3"}); err != nil {
 			t.Fatalf("pinned install failed: %v\n%s", err, out)
 		}
-		assertPath(t, f.paths(), "/releases/v1.2.3/tgsend_linux_amd64.tar.gz")
+		assertPath(t, f.paths(), "/releases/download/v1.2.3/tgsend_linux_amd64.tar.gz")
 	})
 }
 
@@ -461,7 +468,11 @@ func TestCleanupOnSignalAndFailure(t *testing.T) {
 		wait := make(chan error, 1)
 		go func() { wait <- cmd.Wait() }()
 		select {
-		case <-wait:
+		case err := <-wait:
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 130 {
+				t.Fatalf("installer exit after SIGTERM = %v, want status 130", err)
+			}
 		case <-time.After(5 * time.Second):
 			_ = cmd.Process.Kill()
 			t.Fatal("installer did not terminate after signal")

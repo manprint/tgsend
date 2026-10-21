@@ -46,7 +46,7 @@ normalize_version() {
       *) die "TGSEND_VERSION must be latest or semantic version X.Y.Z" ;;
     esac
   done
-  release_path=v$version_without_v
+  release_path=download/v$version_without_v
 }
 
 select_base_url() {

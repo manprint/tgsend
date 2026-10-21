@@ -49,7 +49,7 @@ normalize_version() {
     esac
   done
 
-  release_path=v$version_without_v
+  release_path=download/v$version_without_v
   expected_version=$version_without_v
 }
 
