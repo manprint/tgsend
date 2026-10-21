@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"math"
+	"os"
+	"time"
 	"unicode/utf8"
 
 	"github.com/manprint/tgsend/internal/apperr"
@@ -62,19 +64,39 @@ func Read(source Source) (string, error) {
 	return string(data), nil
 }
 
+// stdinProbeWait bounds how long a message flag waits to learn whether piped
+// stdin also carries input. Input that arrives later is ignored.
+const stdinProbeWait = 250 * time.Millisecond
+
 func checkStdinUnused(stdin io.Reader) error {
 	if stdin == nil {
 		return nil
 	}
+	if file, isFile := stdin.(*os.File); isFile {
+		pending, ok, err := pendingStdin(file, stdinProbeWait)
+		if err != nil {
+			return apperr.New(apperr.KindInput, apperr.CodeInputUnreadable, "unable to inspect stdin", err)
+		}
+		if ok {
+			if pending {
+				return conflictingInput()
+			}
+			return nil
+		}
+	}
 	var one [1]byte
 	n, err := stdin.Read(one[:])
 	if n > 0 {
-		return apperr.New(apperr.KindUsage, apperr.CodeConflictingInput, "message flag conflicts with stdin input", nil)
+		return conflictingInput()
 	}
 	if err != nil && !errors.Is(err, io.EOF) {
 		return apperr.New(apperr.KindInput, apperr.CodeInputUnreadable, "unable to inspect stdin", err)
 	}
 	return nil
+}
+
+func conflictingInput() error {
+	return apperr.New(apperr.KindUsage, apperr.CodeConflictingInput, "message flag conflicts with stdin input", nil)
 }
 
 func validateMessage(message string, maxBytes int64) (string, error) {

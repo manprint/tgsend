@@ -4,7 +4,11 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -38,6 +42,34 @@ func TestInputExactWhitespaceAndNewline(t *testing.T) {
 func TestInputMessageStdinConflict(t *testing.T) {
 	result := run(t, []string{"--dry-run", "-m", "flag"}, []byte("pipe"), nil, 5*time.Second)
 	assertE2EError(t, result, 2, "conflicting_input")
+}
+
+func TestInputMessageWithIdleOpenStdinPipe(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows stdin is checked by reading, so an idle pipe still waits for end of input")
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create pipe: %v", err)
+	}
+	defer func() { _ = writer.Close() }()
+	defer func() { _ = reader.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, binaryPath, "--dry-run", "-m", "hello")
+	command.Env = isolatedEnvironment(t.TempDir(), nil)
+	command.Stdin = reader
+	var stdout, stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	runErr := command.Run()
+	if ctx.Err() != nil {
+		t.Fatal("tgsend -m blocked on a stdin pipe that is open but idle")
+	}
+	if runErr != nil || stderr.Len() != 0 || !bytes.Contains(stdout.Bytes(), []byte(`"text":"hello"`)) {
+		t.Fatalf("run error/stdout/stderr = %v/%q/%q", runErr, stdout.String(), stderr.String())
+	}
 }
 
 func TestInputMaxBytesZeroRejected(t *testing.T) {
