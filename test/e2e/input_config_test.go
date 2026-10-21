@@ -72,6 +72,11 @@ func TestInputMessageWithIdleOpenStdinPipe(t *testing.T) {
 	}
 }
 
+func TestInputWhitespaceOnlyRejectedBeforeSend(t *testing.T) {
+	result := run(t, []string{"--dry-run"}, []byte(" \n\t\n"), nil, 5*time.Second)
+	assertE2EError(t, result, 4, "input_empty")
+}
+
 func TestInputMaxBytesZeroRejected(t *testing.T) {
 	result := run(t, []string{"--dry-run", "-m", "body", "--max-input-bytes", "0"}, nil, nil, 5*time.Second)
 	assertE2EError(t, result, 2, "invalid_flag")

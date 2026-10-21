@@ -149,6 +149,53 @@ func TestTitleTooLongRejected(t *testing.T) {
 	}
 }
 
+func TestPlannerRejectsWhitespaceOnlyBodyWithoutHeader(t *testing.T) {
+	for _, options := range []Options{{}, {Monospace: true}, {Silent: true}} {
+		_, err := (Planner{}).Plan(" \t\r\n", options)
+		assertInputEmpty(t, err)
+	}
+	chunks, err := (Planner{}).Plan("\n", Options{Title: "Deploy"})
+	if err != nil || len(chunks) != 1 || chunks[0].Text != "Deploy\n\n\n" {
+		t.Fatalf("Plan(blank body, title) = %#v, %v; want header-only visible chunk", chunks, err)
+	}
+}
+
+func TestPlannerSplitsLongTextWithoutBlankChunks(t *testing.T) {
+	cases := map[string]string{
+		"leading line feed":   "\n" + strings.Repeat("x", 5000),
+		"trailing line feeds": strings.Repeat("x", 4090) + "\nend" + strings.Repeat("\n", 10),
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			chunks, err := (Planner{}).Plan(body, Options{})
+			if err != nil {
+				t.Fatalf("Plan() error = %v", err)
+			}
+			if len(chunks) != 2 || strings.Join(chunkTexts(chunks), "") != body {
+				t.Fatalf("Plan() = %d chunks; want 2 that reconstruct the body", len(chunks))
+			}
+			for index, chunk := range chunks {
+				if isBlank(chunk.Text) {
+					t.Fatalf("chunk %d is blank: %q", index+1, chunk.Text)
+				}
+			}
+		})
+	}
+}
+
+func TestPlannerRejectsUnsplittableWhitespaceRun(t *testing.T) {
+	_, err := (Planner{}).Plan(strings.Repeat(" ", 5000)+"x", Options{})
+	assertInputEmpty(t, err)
+}
+
+func assertInputEmpty(t *testing.T, err error) {
+	t.Helper()
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) || appErr.Kind != apperr.KindInput || appErr.Code != apperr.CodeInputEmpty {
+		t.Fatalf("Plan() error = %v; want input_empty input error", err)
+	}
+}
+
 func TestPlannerNoChunkLabels(t *testing.T) {
 	chunks, err := (Planner{}).Plan(strings.Repeat("message ", 700), Options{})
 	if err != nil {
@@ -205,6 +252,9 @@ func FuzzPlannerInvariants(f *testing.F) {
 	f.Add("first\nsecond", false)
 	f.Add("😀"+strings.Repeat("x", 5000), true)
 	f.Add("e\u0301\r\nnext", false)
+	f.Add("\n"+strings.Repeat("x", 5000), false)
+	f.Add(strings.Repeat("x", 4095)+"\n\n\n", true)
+	f.Add(" \n", false)
 
 	f.Fuzz(func(t *testing.T, body string, monospace bool) {
 		chunks, err := (Planner{}).Plan(body, Options{Monospace: monospace})
@@ -217,6 +267,17 @@ func FuzzPlannerInvariants(f *testing.F) {
 		if body == "" {
 			if !errors.Is(err, errEmptyBody) {
 				t.Fatalf("Plan(empty) error = %v; want empty body", err)
+			}
+			return
+		}
+		units, unitsErr := utf16Len(body)
+		if unitsErr != nil {
+			t.Fatalf("utf16Len(body) error = %v", unitsErr)
+		}
+		var appErr *apperr.Error
+		if errors.As(err, &appErr) && appErr.Code == apperr.CodeInputEmpty {
+			if units <= messageLimit && !isBlank(body) {
+				t.Fatalf("Plan(%q) rejected a visible single-chunk body as blank", body)
 			}
 			return
 		}
@@ -234,6 +295,9 @@ func FuzzPlannerInvariants(f *testing.F) {
 			if err := validateEntities(chunk.Text, chunk.Entities); err != nil {
 				t.Fatalf("chunk %d entities invalid: %v", index, err)
 			}
+			if isBlank(chunk.Text) {
+				t.Fatalf("chunk %d is blank: %q", index, chunk.Text)
+			}
 		}
 		again, againErr := (Planner{}).Plan(body, Options{Monospace: monospace})
 		if againErr != nil || !reflect.DeepEqual(chunks, again) {
@@ -248,11 +312,4 @@ func chunkTexts(chunks []Chunk) []string {
 		texts[index] = chunk.Text
 	}
 	return texts
-}
-
-func min(left, right int) int {
-	if left < right {
-		return left
-	}
-	return right
 }

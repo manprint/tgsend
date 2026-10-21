@@ -99,6 +99,48 @@ func TestSplitUsesFirstBudgetOnce(t *testing.T) {
 	}
 }
 
+func TestSplitAvoidsBlankSegments(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want []string
+	}{
+		{name: "leading line feed before a long line", body: "\nabcdef", want: []string{"\nabc", "def"}},
+		{name: "leading blank line before a long line", body: "  \nabcdef", want: []string{"  \na", "bcdef"}},
+		{name: "trailing line feeds across the boundary", body: "ab\ncd\n\n\n", want: []string{"ab\n", "cd\n\n\n"}},
+		{name: "trailing spaces without line feed", body: "abcd   ", want: []string{"abc", "d   "}},
+		{name: "blank run between content", body: "a\n\n\n\n\n\nb", want: []string{"a\n\n\n", "\n\n\nb"}},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got, err := splitBody(testCase.body, 4, 5)
+			if err != nil {
+				t.Fatalf("splitBody() error = %v", err)
+			}
+			if !reflect.DeepEqual(got, testCase.want) {
+				t.Fatalf("splitBody() = %#v; want %#v", got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestSplitKeepsPlainRuleWhenBlankSegmentIsUnavoidable(t *testing.T) {
+	cases := map[string][]string{
+		"     x":     {"    ", " x"},
+		"x     ":     {"x   ", "  "},
+		"\n\n\n\n\n": {"\n\n\n\n", "\n"},
+	}
+	for body, want := range cases {
+		got, err := splitBody(body, 4, 4)
+		if err != nil {
+			t.Fatalf("splitBody(%q) error = %v", body, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("splitBody(%q) = %#v; want %#v", body, got, want)
+		}
+	}
+}
+
 func TestSplitRejectsImpossibleBudget(t *testing.T) {
 	for name, testCase := range map[string]struct {
 		body        string

@@ -91,6 +91,9 @@ func (Planner) Plan(body string, options Options) ([]Chunk, error) {
 		if err := validateEntities(text, entities); err != nil {
 			return nil, err
 		}
+		if isBlank(text) {
+			return nil, blankChunkError(body)
+		}
 		chunks = append(chunks, Chunk{
 			Text:                text,
 			Entities:            entities,
@@ -133,6 +136,15 @@ func composeHeader(options Options) (header string, titleStart, titleUnits int, 
 		return "", 0, 0, apperr.New(apperr.KindUsage, apperr.CodeTitleTooLong, "title and header exceed the Telegram message limit", nil)
 	}
 	return header, titleStart, titleUnits, nil
+}
+
+// blankChunkError reports, before anything is sent, a chunk that Telegram
+// would reject as empty because it contains only whitespace.
+func blankChunkError(body string) error {
+	if isBlank(body) {
+		return apperr.New(apperr.KindInput, apperr.CodeInputEmpty, "input contains only whitespace", nil)
+	}
+	return apperr.New(apperr.KindInput, apperr.CodeInputEmpty, "input contains a whitespace run that would be sent as a blank message", nil)
 }
 
 func headerUnits(header string) int {
