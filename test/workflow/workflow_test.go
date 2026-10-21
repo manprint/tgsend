@@ -22,7 +22,14 @@ func repoRoot(t *testing.T) string {
 
 func readWorkflow(t *testing.T, name string) string {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(repoRoot(t), ".github", "workflows", name))
+	return readRepoFile(t, ".github", "workflows", name)
+}
+
+// readRepoFile normalizes line endings, since Windows checkouts may use CRLF.
+func readRepoFile(t *testing.T, parts ...string) string {
+	t.Helper()
+	name := filepath.Join(parts...)
+	data, err := os.ReadFile(filepath.Join(repoRoot(t), name))
 	if err != nil {
 		t.Fatalf("read %s: %v", name, err)
 	}
@@ -101,20 +108,12 @@ func TestToolchainPinsAgree(t *testing.T) {
 	if ci == nil || release == nil || ci[1] != release[1] {
 		t.Fatalf("workflow GO_VERSION pins = %v / %v, want one shared version", ci, release)
 	}
-	makefile, err := os.ReadFile(filepath.Join(repoRoot(t), "Makefile"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	vuln := regexp.MustCompile(`(?m)^VULN_GO_VERSION := go([0-9.]+)$`).FindSubmatch(makefile)
-	if vuln == nil || string(vuln[1]) != ci[1] {
+	vuln := regexp.MustCompile(`(?m)^VULN_GO_VERSION := go([0-9.]+)$`).FindStringSubmatch(readRepoFile(t, "Makefile"))
+	if vuln == nil || vuln[1] != ci[1] {
 		t.Fatalf("Makefile VULN_GO_VERSION = %q, want go%s", vuln, ci[1])
 	}
-	goMod, err := os.ReadFile(filepath.Join(repoRoot(t), "go.mod"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	directive := regexp.MustCompile(`(?m)^go ([0-9.]+)$`).FindSubmatch(goMod)
-	if directive == nil || string(directive[1]) != ci[1] {
+	directive := regexp.MustCompile(`(?m)^go ([0-9.]+)$`).FindStringSubmatch(readRepoFile(t, "go.mod"))
+	if directive == nil || directive[1] != ci[1] {
 		t.Fatalf("go.mod go directive = %q, want %s", directive, ci[1])
 	}
 }
