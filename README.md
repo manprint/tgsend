@@ -8,7 +8,7 @@ at Telegram's UTF-16 limit, and sends the resulting chunks in order.
 ## Requirements
 
 - A POSIX shell, `tar`, and either `sha256sum` or `shasum` for release installers
-- Go 1.27.0 and Make when building from source
+- Go 1.27.3 and Make when building from source
 - Docker with Buildx (only for the container and wrapper modes)
 - `curl` or `wget` when using an installer
 
@@ -34,17 +34,23 @@ archive and `checksums.txt` from GitHub, verifies the exact SHA-256 entry,
 validates `tgsend --version`, and replaces the destination atomically. The
 default destination is `/usr/local/bin/tgsend`.
 
-For a quick install of the latest binary:
+For a quick install of the latest binary into `/usr/local/bin`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh | sudo sh
 ```
 
-For a pinned release or a user-owned directory, set `TGSEND_VERSION` to
-`1.2.3` or `v1.2.3` and `TGSEND_INSTALL_DIR` before running the installer:
+For a pinned release, set `TGSEND_VERSION` to `1.2.3` or `v1.2.3`. Pass it
+through `sudo env`, because `sudo` drops variables set before the pipeline:
 
 ```sh
-TGSEND_VERSION=v1.2.3 TGSEND_INSTALL_DIR="$HOME/.local/bin" sh install.sh
+curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh | sudo env TGSEND_VERSION=v1.2.3 sh
+```
+
+For a user-owned directory, no `sudo` is needed:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install.sh | TGSEND_VERSION=v1.2.3 TGSEND_INSTALL_DIR="$HOME/.local/bin" sh
 ```
 
 For a safer reviewable install, download the script, inspect it, then execute
@@ -61,7 +67,7 @@ The Docker wrapper has a separate verified installer and is supported on Linux
 and macOS only:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install-wrapper.sh | sh
+curl -fsSL https://raw.githubusercontent.com/manprint/tgsend/main/scripts/install-wrapper.sh | sudo sh
 ```
 
 Reviewable wrapper installation is analogous: download
@@ -147,16 +153,24 @@ printf 'Hello\n' | env TGSEND_IMAGE=tgsend:local "$HOME/.local/bin/tgsend"
 ```
 
 The wrapper forwards every original flag and stdin byte-for-byte, runs Docker
-with `--rm -i`, the caller's UID/GID and working directory, and mounts only an
-existing default or explicitly selected config file read-only. It supports
-`-c PATH`, `-cPATH`, `--config PATH`, and `--config=PATH`. With no config file,
-set `TGSEND_TOKEN` and `TGSEND_CHAT_ID`; the wrapper passes only those variable
-names to Docker. Container exit codes are returned unchanged.
+with `--rm`, the caller's UID/GID and working directory, and mounts only an
+existing default or explicitly selected config file read-only. Stdin is
+attached with `-i` only when it is not a terminal or another character device
+such as `/dev/null`, so `tgsend.sh -m 'Hello'` in an interactive shell or a
+cron job behaves like the native binary instead of waiting for end of input. It supports `-c PATH`, `-cPATH`, `-c=PATH`, `--config PATH`, and
+`--config=PATH`; values of the other flags, such as `-m '-c'`, are never read
+as a config path. The config file is mounted at the path `tgsend` opens, so a
+symlinked `~/.tgsend` (for example from a dotfile manager) works. With no
+config file, set `TGSEND_TOKEN` and `TGSEND_CHAT_ID`; the wrapper passes only
+those variable names to Docker. Container exit codes are returned unchanged.
 
-The wrapper requires Docker and a readable config file when one is selected.
-It does not mount the current directory, the Docker socket, or a config
-parent directory. It is not a Windows/PowerShell wrapper; use the native
-binary or invoke Docker directly on Windows.
+The wrapper requires Docker. A selected config file that does not exist is not
+mounted, so `tgsend` reports it exactly as the native binary does (and
+`--dry-run` still works); a selected path that is a directory or unreadable is
+rejected by the wrapper with `config_unreadable`. It does not mount the
+current directory, the Docker socket, or a config parent directory. It is not
+a Windows/PowerShell wrapper; use the native binary or invoke Docker directly
+on Windows.
 
 ## Usage
 
@@ -338,6 +352,8 @@ the bot token or chat ID, and successful sends do not echo message bodies.
 ## Exit codes
 
 - `0` — success
+- `1` — internal error (`internal_error`), for example when the result JSON
+  cannot be written to standard output; a send may already have succeeded
 - `2` — usage or command-line argument error
 - `3` — configuration error
 - `4` — input error
@@ -415,7 +431,7 @@ standard error:
 if ./bin/tgsend --type INFO -m 'job finished' >response.json 2>error.json; then
   python3 -c 'import json; x=json.load(open("response.json")); assert x["ok"]'
 else
-  python3 -c 'import json; x=json.load(open("error.json")); print(x["error"]["kind"])' >&2
+  python3 -c 'import json; x=json.load(open("error.json")); print(x["error"]["code"])' >&2
   exit 1
 fi
 ```
@@ -449,6 +465,9 @@ smoke test is optional and must be performed manually by the operator.
 - The first chunk reserves space for the header and separator.
 - A title/header that cannot fit is rejected before any request is made.
 - Only complete, valid UTF-8 input is accepted.
+- Splitting never produces a chunk that is only whitespace when the text
+  allows a visible chunk on both sides of the cut; a whitespace run too long
+  for that is rejected with `input_empty` before any request is made.
 - Docker mode additionally requires a Linux/amd64 image build for the example
   above; build another platform directory when targeting a different platform.
 
@@ -491,7 +510,13 @@ include a bot token, chat ID, configuration file, or private message content.
 - If standard input is a terminal and `--message` is not supplied, provide a
   message with `-m` or pipe input into the command.
 - If `-m` and non-empty standard input are both supplied, the command exits 2
-  with `conflicting_input`.
+  with `conflicting_input`. On Linux and macOS, piped input is detected without
+  consuming it, and an open but idle stdin pipe (common when a parent process
+  or agent harness spawns `tgsend`) is waited for at most 250 ms; input that
+  arrives later is ignored. On Windows, `-m` with a piped stdin still waits
+  for the pipe to close, so redirect stdin from `NUL` in such harnesses.
+- Input that contains only whitespace, with no `--title` or `--type`, exits 4
+  with `input_empty`, because Telegram rejects blank messages.
 - If configuration is incomplete or an explicit file is missing, inspect the
   selected path and the two environment variables; the token itself is never
   included in the error.
